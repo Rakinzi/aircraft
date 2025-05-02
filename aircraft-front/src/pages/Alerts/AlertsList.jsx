@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import axios from 'axios'
 import { 
   AlertTriangle, 
   Filter, 
@@ -10,6 +9,7 @@ import {
   Eye,
   Clock
 } from 'lucide-react'
+import { alertsAPI } from '../../services/api'
 
 const AlertsList = () => {
   const [alerts, setAlerts] = useState([])
@@ -21,20 +21,27 @@ const AlertsList = () => {
   useEffect(() => {
     const fetchAlerts = async () => {
       try {
-        // We'll need to fetch both active and resolved alerts if filter is set to 'all'
-        const resolved = filter === 'resolved' || filter === 'all'
-        const response = await axios.get(`/api/alerts?resolved=${resolved}`)
+        setLoading(true)
         
-        // If filter is 'all', we need to fetch the opposite type as well
+        // Determine which resolved parameter to use based on filter
+        const resolved = filter === 'resolved' ? true : filter === 'active' ? false : null
+        
+        // If filter is 'all', we need to fetch both active and resolved alerts
         if (filter === 'all') {
-          const oppositeResponse = await axios.get('/api/alerts?resolved=false')
-          setAlerts([...response.data, ...oppositeResponse.data])
+          const [activeRes, resolvedRes] = await Promise.all([
+            alertsAPI.getAll({ resolved: false }),
+            alertsAPI.getAll({ resolved: true })
+          ])
+          
+          setAlerts([...activeRes.data, ...resolvedRes.data])
         } else {
+          const response = await alertsAPI.getAll({ resolved })
           setAlerts(response.data)
         }
         
         setLoading(false)
       } catch (err) {
+        console.error('Failed to load alerts:', err)
         setError('Failed to load alerts. Please try again later.')
         setLoading(false)
       }
@@ -54,31 +61,33 @@ const AlertsList = () => {
   
   const handleMarkAsRead = async (alertId, isRead) => {
     try {
-      await axios.put(`/api/alerts/${alertId}`, { is_read: isRead })
+      await alertsAPI.update(alertId, { is_read: isRead })
       
       // Update local state
       setAlerts(alerts.map(alert => 
         alert.id === alertId ? { ...alert, is_read: isRead } : alert
       ))
     } catch (err) {
+      console.error('Failed to update alert status:', err)
       setError('Failed to update alert status. Please try again.')
     }
   }
   
   const handleResolveAlert = async (alertId) => {
     try {
-      await axios.put(`/api/alerts/${alertId}`, { resolved: true })
+      await alertsAPI.update(alertId, { resolved: true })
       
-      // Remove from list if we're viewing active alerts
+      // If we're viewing active alerts, remove this alert from the list
       if (filter === 'active') {
         setAlerts(alerts.filter(alert => alert.id !== alertId))
       } else {
-        // Update status in list
+        // Update the status in our local state
         setAlerts(alerts.map(alert => 
           alert.id === alertId ? { ...alert, resolved: true } : alert
         ))
       }
     } catch (err) {
+      console.error('Failed to resolve alert:', err)
       setError('Failed to resolve alert. Please try again.')
     }
   }

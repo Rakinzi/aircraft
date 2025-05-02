@@ -1,402 +1,267 @@
 import { useState, useEffect } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
-import axios from 'axios'
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  AreaChart,
-  Area
-} from 'recharts'
-import {
-  Calendar,
-  Clock,
-  Gauge,
-  AlertTriangle,
-  Wrench,
-  ChevronLeft,
-  Settings,
-  Plus,
-  Clipboard
+import { Link } from 'react-router-dom'
+import { 
+  Calendar, 
+  Wrench, 
+  Sliders, 
+  Plus, 
+  Search, 
+  Filter,
+  CheckCircle,
+  Clock
 } from 'lucide-react'
-import { useAuth } from '../../contexts/AuthContext'
+import { maintenanceAPI } from '../../services/api'
 
-const EngineDetail = () => {
-  const { engineId } = useParams()
-  const [engine, setEngine] = useState(null)
+const MaintenanceList = () => {
+  const [maintenanceRecords, setMaintenanceRecords] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const navigate = useNavigate()
-  const { currentUser } = useAuth()
-
+  const [searchTerm, setSearchTerm] = useState('')
+  const [filter, setFilter] = useState('all') // all, active, completed
+  
   useEffect(() => {
-    const fetchEngineDetail = async () => {
+    const fetchMaintenanceRecords = async () => {
       try {
-        const response = await axios.get(`/api/engines/${engineId}`)
-        setEngine(response.data)
+        setLoading(true)
+        
+        // Get query parameters based on filter
+        const params = {}
+        if (filter === 'active') {
+          params.active = true
+        } else if (filter === 'completed') {
+          params.completed = true
+        }
+        
+        const response = await maintenanceAPI.getAll(params)
+        setMaintenanceRecords(response.data)
         setLoading(false)
       } catch (err) {
-        setError('Failed to load engine details. Please try again later.')
+        console.error('Failed to load maintenance records:', err)
+        setError('Failed to load maintenance records. Please try again later.')
         setLoading(false)
       }
     }
-
-    fetchEngineDetail()
-  }, [engineId])
-
+    
+    fetchMaintenanceRecords()
+  }, [filter])
+  
+  const filteredRecords = maintenanceRecords.filter(record => {
+    // Apply search filter
+    return (
+      record.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      record.engine_serial?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      record.maintenance_type?.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+  })
+  
+  const getMaintenanceTypeColor = (type) => {
+    switch (type.toLowerCase()) {
+      case 'scheduled':
+        return 'bg-blue-100 text-blue-800'
+      case 'unscheduled':
+        return 'bg-orange-100 text-orange-800'
+      case 'overhaul':
+        return 'bg-purple-100 text-purple-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
+    }
+  }
+  
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
-          <p className="mt-4 text-gray-600">Loading engine details...</p>
+          <p className="mt-4 text-gray-600">Loading maintenance records...</p>
         </div>
       </div>
     )
   }
-
-  if (error) {
-    return (
-      <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-        <strong className="font-bold">Error!</strong>
-        <span className="block sm:inline"> {error}</span>
-      </div>
-    )
-  }
-
-  if (!engine) {
-    return (
-      <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative" role="alert">
-        <strong className="font-bold">Not Found!</strong>
-        <span className="block sm:inline"> The requested engine could not be found.</span>
-      </div>
-    )
-  }
-
-  // Format cycle data for charts
-  const cycleData = engine.cycles?.map(cycle => ({
-    cycle: cycle.cycle,
-    s2: cycle.sensor_data?.s2 || 0,
-    s3: cycle.sensor_data?.s3 || 0,
-    s4: cycle.sensor_data?.s4 || 0
-  })) || []
-
-  // Format failure probability data
-  const failureProbData = engine.cycles?.map(cycle => ({
-    cycle: cycle.cycle,
-    probability: cycle.failure_probability || 0
-  })) || []
-
-  // Format cycle data for sensor readings chart
-  const sensorData = (engine.cycles || []).slice(-30) // Show last 30 cycles for better visualization
   
   return (
     <div className="space-y-6">
-      {/* Back navigation */}
-      <div>
-        <button
-          onClick={() => navigate('/dashboard/engines')}
-          className="inline-flex items-center text-sm text-primary-600 hover:text-primary-700"
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl font-bold text-gray-800">Maintenance Records</h1>
+        <Link
+          to="/dashboard/maintenance/new"
+          className="mt-3 sm:mt-0 inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 focus:outline-none"
         >
-          <ChevronLeft size={16} className="mr-1" />
-          Back to engines list
-        </button>
+          <Plus size={16} className="mr-2" />
+          Add Maintenance
+        </Link>
       </div>
-
-      {/* Engine header */}
-      <div className="bg-white shadow rounded-lg p-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800">Engine {engine.serial_number}</h1>
-            <div className="mt-1 text-sm text-gray-500">
-              <span>{engine.model || 'No model specified'}</span>
-              {engine.aircraft_id && (
-                <>
-                  <span className="mx-1">•</span>
-                  <span>Aircraft: {engine.aircraft_id}</span>
-                </>
-              )}
-            </div>
+      
+      {/* Search and Filter */}
+      <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+        <div className="relative flex-grow">
+          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+            <Search size={18} className="text-gray-400" />
           </div>
-          
-          <div className="mt-4 md:mt-0 flex flex-wrap gap-2">
-            {(currentUser.role === 'admin' || currentUser.role === 'engineer') && (
+          <input
+            type="text"
+            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+            placeholder="Search maintenance records..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        
+        <div className="flex-shrink-0">
+          <div className="relative inline-block text-left">
+            <div className="flex">
               <button
-                className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md bg-white text-sm text-gray-700 hover:bg-gray-50"
-                onClick={() => navigate(`/dashboard/engines/${engineId}/edit`)}
+                type="button"
+                className={`inline-flex items-center justify-center px-4 py-2 border ${
+                  filter === 'all' 
+                    ? 'border-primary-500 text-primary-700 bg-primary-50' 
+                    : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
+                } text-sm font-medium rounded-l-md focus:z-10 focus:outline-none`}
+                onClick={() => setFilter('all')}
               >
-                <Settings size={15} className="mr-1.5" />
-                Engine Settings
+                All
               </button>
-            )}
-            <Link
-              to={`/dashboard/maintenance/new?engineId=${engineId}`}
-              className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md bg-white text-sm text-gray-700 hover:bg-gray-50"
-            >
-              <Plus size={15} className="mr-1.5" />
-              Add Maintenance
-            </Link>
-          </div>
-        </div>
-        
-        {/* Engine status info */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-4 bg-gray-50 rounded-lg">
-            <div className="flex items-center">
-              <Gauge size={20} className="text-primary-500 mr-2" />
-              <span className="text-sm font-medium text-gray-700">Status</span>
-            </div>
-            <div className="mt-2">
-              <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                engine.status === 'active' 
-                  ? 'bg-green-100 text-green-800' 
-                  : engine.status === 'maintenance'
-                  ? 'bg-yellow-100 text-yellow-800'
-                  : 'bg-gray-100 text-gray-800'
-              }`}>
-                {engine.status.charAt(0).toUpperCase() + engine.status.slice(1)}
-              </span>
-            </div>
-          </div>
-          
-          <div className="p-4 bg-gray-50 rounded-lg">
-            <div className="flex items-center">
-              <Clock size={20} className="text-primary-500 mr-2" />
-              <span className="text-sm font-medium text-gray-700">Total Cycles</span>
-            </div>
-            <div className="mt-2 text-xl font-semibold text-gray-900">
-              {engine.total_cycles || 0}
-            </div>
-          </div>
-          
-          <div className="p-4 bg-gray-50 rounded-lg">
-            <div className="flex items-center">
-              <Calendar size={20} className="text-primary-500 mr-2" />
-              <span className="text-sm font-medium text-gray-700">Installation Date</span>
-            </div>
-            <div className="mt-2 text-sm text-gray-700">
-              {engine.installation_date 
-                ? new Date(engine.installation_date).toLocaleDateString() 
-                : 'Not specified'}
+              <button
+                type="button"
+                className={`inline-flex items-center justify-center px-4 py-2 border ${
+                  filter === 'active' 
+                    ? 'border-primary-500 text-primary-700 bg-primary-50' 
+                    : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
+                } text-sm font-medium focus:z-10 focus:outline-none`}
+                onClick={() => setFilter('active')}
+              >
+                <Clock size={16} className="mr-1.5" />
+                In Progress
+              </button>
+              <button
+                type="button"
+                className={`inline-flex items-center justify-center px-4 py-2 border ${
+                  filter === 'completed' 
+                    ? 'border-primary-500 text-primary-700 bg-primary-50' 
+                    : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
+                } text-sm font-medium rounded-r-md focus:z-10 focus:outline-none`}
+                onClick={() => setFilter('completed')}
+              >
+                <CheckCircle size={16} className="mr-1.5" />
+                Completed
+              </button>
             </div>
           </div>
         </div>
       </div>
       
-      {/* Prediction & RUL section */}
-      {engine.cycles && engine.cycles.length > 0 && engine.cycles[engine.cycles.length - 1].failure_probability && (
-        <div className="bg-white shadow rounded-lg p-6">
-          <h2 className="text-lg font-medium text-gray-800">Failure Prediction</h2>
-          
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className={`p-4 rounded-lg ${
-              engine.cycles[engine.cycles.length - 1].failure_probability > 0.7
-                ? 'bg-red-50'
-                : engine.cycles[engine.cycles.length - 1].failure_probability > 0.5
-                ? 'bg-yellow-50'
-                : 'bg-green-50'
-            }`}>
-              <div className="flex items-center">
-                <AlertTriangle size={20} className={`mr-2 ${
-                  engine.cycles[engine.cycles.length - 1].failure_probability > 0.7
-                    ? 'text-red-500'
-                    : engine.cycles[engine.cycles.length - 1].failure_probability > 0.5
-                    ? 'text-yellow-500'
-                    : 'text-green-500'
-                }`} />
-                <span className="text-sm font-medium text-gray-700">Failure Probability</span>
-              </div>
-              <div className="mt-2">
-                <span className={`text-2xl font-bold ${
-                  engine.cycles[engine.cycles.length - 1].failure_probability > 0.7
-                    ? 'text-red-600'
-                    : engine.cycles[engine.cycles.length - 1].failure_probability > 0.5
-                    ? 'text-yellow-600'
-                    : 'text-green-600'
-                }`}>
-                  {Math.round(engine.cycles[engine.cycles.length - 1].failure_probability * 100)}%
-                </span>
-              </div>
-              {engine.cycles[engine.cycles.length - 1].failure_probability > 0.7 && (
-                <p className="mt-2 text-sm text-red-600">
-                  Maintenance is highly recommended
-                </p>
-              )}
-            </div>
-            
-            <div className="p-4 bg-blue-50 rounded-lg">
-              <div className="flex items-center">
-                <Gauge size={20} className="text-blue-500 mr-2" />
-                <span className="text-sm font-medium text-gray-700">Remaining Useful Life</span>
-              </div>
-              <div className="mt-2">
-                <span className="text-2xl font-bold text-blue-600">
-                  {engine.cycles[engine.cycles.length - 1].rul 
-                    ? Math.round(engine.cycles[engine.cycles.length - 1].rul) 
-                    : 'N/A'
-                  }
-                </span>
-                <span className="ml-1 text-sm text-gray-600">cycles</span>
-              </div>
-            </div>
-            
-            <div className="p-4 bg-purple-50 rounded-lg">
-              <div className="flex items-center">
-                <Clipboard size={20} className="text-purple-500 mr-2" />
-                <span className="text-sm font-medium text-gray-700">Last Cycle</span>
-              </div>
-              <div className="mt-2">
-                <span className="text-2xl font-bold text-purple-600">
-                  {engine.cycles[engine.cycles.length - 1].cycle}
-                </span>
-                <p className="mt-1 text-xs text-gray-500">
-                  {new Date(engine.cycles[engine.cycles.length - 1].timestamp).toLocaleString()}
-                </p>
-              </div>
-            </div>
-          </div>
-          
-          {/* Failure probability chart */}
-          <div className="mt-6">
-            <h3 className="text-md font-medium text-gray-700 mb-2">Failure Probability Trend</h3>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={failureProbData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="cycle" />
-                  <YAxis domain={[0, 1]} tickFormatter={(value) => `${Math.round(value * 100)}%`} />
-                  <Tooltip formatter={(value) => [`${Math.round(value * 100)}%`, 'Probability']} />
-                  <Area 
-                    type="monotone" 
-                    dataKey="probability" 
-                    stroke="#ef5350" 
-                    fill="#ffcdd2" 
-                    activeDot={{ r: 8 }} 
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+          <strong className="font-bold">Error!</strong>
+          <span className="block sm:inline"> {error}</span>
         </div>
       )}
       
-      {/* Sensor Data Charts */}
-      {sensorData.length > 0 && (
-        <div className="bg-white shadow rounded-lg p-6">
-          <h2 className="text-lg font-medium text-gray-800">Sensor Readings</h2>
-          
-          <div className="mt-4 h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={sensorData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="cycle" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Line 
-                  type="monotone" 
-                  dataKey={(data) => data.sensor_data?.s2} 
-                  name="Sensor 2" 
-                  stroke="#2196f3" 
-                  activeDot={{ r: 8 }} 
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey={(data) => data.sensor_data?.s3} 
-                  name="Sensor 3" 
-                  stroke="#4caf50" 
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey={(data) => data.sensor_data?.s4} 
-                  name="Sensor 4" 
-                  stroke="#ff9800" 
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      )}
-      
-      {/* Maintenance History */}
-      <div className="bg-white shadow rounded-lg p-6">
-        <div className="flex justify-between items-center">
-          <h2 className="text-lg font-medium text-gray-800">Maintenance History</h2>
-          <Link
-            to={`/dashboard/maintenance/new?engineId=${engineId}`}
-            className="inline-flex items-center text-sm text-primary-600 hover:text-primary-700"
-          >
-            <Plus size={16} className="mr-1" />
-            Add maintenance record
-          </Link>
-        </div>
-        
-        {engine.maintenance_history && engine.maintenance_history.length > 0 ? (
-          <div className="mt-4 flow-root">
-            <ul className="-mb-8">
-              {engine.maintenance_history.map((record, recordIdx) => (
-                <li key={record.id}>
-                  <div className="relative pb-8">
-                    {recordIdx !== engine.maintenance_history.length - 1 ? (
-                      <span
-                        className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200"
-                        aria-hidden="true"
-                      />
-                    ) : null}
-                    <div className="relative flex space-x-3">
-                      <div>
-                        <span className={`h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white ${
-                          record.end_date ? 'bg-green-500' : 'bg-blue-500'
-                        }`}>
-                          <Wrench size={16} className="text-white" />
-                        </span>
-                      </div>
-                      <div className="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
-                        <div>
-                          <p className="text-sm text-gray-500">
-                            <span className="font-medium text-gray-900">
-                              {record.maintenance_type}
-                            </span>
-                            {record.description && ` - ${record.description}`}
+      {/* Maintenance List */}
+      <div className="bg-white shadow overflow-hidden rounded-md">
+        {filteredRecords.length > 0 ? (
+          <ul className="divide-y divide-gray-200">
+            {filteredRecords.map((record) => (
+              <li key={record.id}>
+                <Link 
+                  to={`/dashboard/maintenance/${record.id}/edit`}
+                  className="block hover:bg-gray-50"
+                >
+                  <div className="px-4 py-4 sm:px-6">
+                    <div className="flex items-center justify-between">
+                      <div className="truncate">
+                        <div className="flex items-center">
+                          <span className={`px-2 py-1 mr-2 text-xs font-medium rounded-full ${getMaintenanceTypeColor(record.maintenance_type)}`}>
+                            {record.maintenance_type.charAt(0).toUpperCase() + record.maintenance_type.slice(1)}
+                          </span>
+                          <p className="text-sm font-medium text-primary-600 truncate">
+                            {record.description}
                           </p>
-                          {record.parts_replaced && (
-                            <p className="mt-1 text-xs text-gray-500">
-                              Parts replaced: {Array.isArray(record.parts_replaced) 
-                                ? record.parts_replaced.join(', ') 
-                                : typeof record.parts_replaced === 'object'
-                                ? Object.keys(record.parts_replaced).join(', ')
-                                : record.parts_replaced}
-                            </p>
+                        </div>
+                        <div className="mt-1 flex items-center text-sm text-gray-500">
+                          <Wrench size={16} className="mr-1 flex-shrink-0 text-gray-400" />
+                          <span>Engine: {record.engine_serial || record.engine_id}</span>
+                          {record.cycle_count && (
+                            <>
+                              <span className="mx-1">•</span>
+                              <span>Cycle count: {record.cycle_count}</span>
+                            </>
                           )}
                         </div>
-                        <div className="text-right text-sm whitespace-nowrap text-gray-500">
-                          <time dateTime={record.start_date}>
+                      </div>
+                      <div className="ml-2 flex-shrink-0 flex flex-col items-end">
+                        <div className="flex items-center">
+                          <Calendar size={16} className="mr-1 text-gray-400" />
+                          <span className="text-sm text-gray-500">
                             {new Date(record.start_date).toLocaleDateString()}
-                          </time>
-                          {record.end_date && (
-                            <p className="mt-1 text-xs text-green-600">
-                              Completed: {new Date(record.end_date).toLocaleDateString()}
-                            </p>
+                          </span>
+                        </div>
+                        <div className="mt-1">
+                          {record.end_date ? (
+                            <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                              Completed
+                            </span>
+                          ) : (
+                            <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                              In Progress
+                            </span>
                           )}
                         </div>
                       </div>
                     </div>
+                    <div className="mt-2 flex justify-between text-sm text-gray-500">
+                      <div>
+                        {record.parts_replaced && (
+                          <p className="truncate">
+                            <span className="font-medium">Parts replaced:</span> {
+                              typeof record.parts_replaced === 'string' 
+                                ? record.parts_replaced 
+                                : Array.isArray(record.parts_replaced) 
+                                  ? record.parts_replaced.join(', ')
+                                  : typeof record.parts_replaced === 'object'
+                                    ? Object.keys(record.parts_replaced).join(', ')
+                                    : ''
+                            }
+                          </p>
+                        )}
+                      </div>
+                      {record.performed_by && (
+                        <div className="text-right">
+                          <span>Performed by: {record.performed_by}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </li>
-              ))}
-            </ul>
-          </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
         ) : (
-          <p className="mt-4 text-sm text-gray-500">No maintenance records found for this engine.</p>
+          <div className="text-center py-8">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
+              <Wrench size={24} className="text-gray-400" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900">No maintenance records found</h3>
+            <p className="mt-2 text-sm text-gray-500">
+              {filter === 'active' 
+                ? 'There are no active maintenance records.' 
+                : filter === 'completed'
+                ? 'There are no completed maintenance records.'
+                : 'There are no maintenance records matching your search criteria.'}
+            </p>
+            <div className="mt-4">
+              <Link
+                to="/dashboard/maintenance/new"
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700"
+              >
+                <Plus size={16} className="mr-2" />
+                Add Maintenance Record
+              </Link>
+            </div>
+          </div>
         )}
       </div>
     </div>
   )
 }
 
-export default EngineDetail
+export default MaintenanceList

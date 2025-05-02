@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   Home, 
   Gauge, 
@@ -14,41 +15,56 @@ import {
   HelpCircle,
   Search
 } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import { Outlet } from 'react-router-dom';
+import { alertsAPI } from '../../services/api';
 
-const DashboardLayout = ({ children }) => {
+const DashboardLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [currentPath, setCurrentPath] = useState('/dashboard');
-  const [notifications, setNotifications] = useState([
-    { id: 1, message: "Engine ENG-2024-001 maintenance due", type: "warning", read: false },
-    { id: 2, message: "Engine ENG-2023-042 requires attention", type: "danger", read: false }
-  ]);
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { currentUser, logout } = useAuth();
   
-  // Simulate user data - in a real app, this would come from your auth context
-  const currentUser = {
-    name: "Alex Johnson",
-    email: "alex.johnson@example.com",
-    role: "Engineer",
-    avatar: "https://i.pravatar.cc/150?img=11"
-  };
-  
+  // Fetch notifications on component mount
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const response = await alertsAPI.getAll({ resolved: false });
+        setNotifications(response.data);
+      } catch (err) {
+        console.error('Failed to fetch notifications:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchNotifications();
+  }, []);
+
   // Close sidebar when route changes on mobile
   useEffect(() => {
     setSidebarOpen(false);
-  }, [currentPath]);
+  }, [location.pathname]);
 
-  const handleLogout = () => {
-    console.log("Logging out...");
-    // In a real app: logout(), then navigate to login page
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
   };
   
   const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: <Home size={20} /> },
     { path: '/dashboard/engines', label: 'Engines', icon: <Gauge size={20} /> },
     { path: '/dashboard/maintenance', label: 'Maintenance', icon: <Wrench size={20} /> },
-    { path: '/dashboard/alerts', label: 'Alerts', icon: <Bell size={20} />, badge: 2 },
-    { path: '/dashboard/analytics', label: 'Analytics', icon: <BarChart2 size={20} /> },
+    { path: '/dashboard/alerts', label: 'Alerts', icon: <Bell size={20} />, badge: notifications.length },
   ];
   
   const secondaryNavItems = [
@@ -57,11 +73,11 @@ const DashboardLayout = ({ children }) => {
   ];
 
   const NavItem = ({ item }) => {
-    const isActive = currentPath === item.path;
+    const isActive = location.pathname === item.path;
     
     return (
       <button
-        onClick={() => setCurrentPath(item.path)}
+        onClick={() => navigate(item.path)}
         className={`flex items-center justify-between w-full px-4 py-3 rounded-lg transition-all duration-200 ${
           isActive 
             ? 'bg-blue-600 text-white shadow-md' 
@@ -72,7 +88,7 @@ const DashboardLayout = ({ children }) => {
           <span className={`${isActive ? 'text-white' : 'text-gray-400'} mr-3`}>{item.icon}</span>
           <span>{item.label}</span>
         </div>
-        {item.badge && (
+        {item.badge > 0 && (
           <span className="ml-auto px-2 py-1 text-xs font-bold rounded-full bg-red-500 text-white">
             {item.badge}
           </span>
@@ -117,15 +133,13 @@ const DashboardLayout = ({ children }) => {
         <div className="p-4">
           <div className="flex items-center p-3 mb-6 bg-blue-700 bg-opacity-40 rounded-lg">
             <div className="flex-shrink-0">
-              <img
-                className="h-10 w-10 rounded-full object-cover border-2 border-blue-400"
-                src={currentUser.avatar}
-                alt={currentUser.name}
-              />
+              <div className="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">
+                {currentUser?.username?.charAt(0).toUpperCase() || 'U'}
+              </div>
             </div>
             <div className="ml-3">
-              <div className="text-sm font-medium text-white">{currentUser.name}</div>
-              <div className="text-xs text-blue-300">{currentUser.role}</div>
+              <div className="text-sm font-medium text-white">{currentUser?.username || 'User'}</div>
+              <div className="text-xs text-blue-300">{currentUser?.role || 'Role'}</div>
             </div>
           </div>
           
@@ -205,9 +219,10 @@ const DashboardLayout = ({ children }) => {
               <div className="relative">
                 <button
                   className="p-2 rounded-full hover:bg-gray-100 focus:outline-none relative"
+                  onClick={() => navigate('/dashboard/alerts')}
                 >
                   <Bell size={20} className="text-gray-600" />
-                  {notifications.filter(n => !n.read).length > 0 && (
+                  {notifications.length > 0 && (
                     <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
                   )}
                 </button>
@@ -219,22 +234,20 @@ const DashboardLayout = ({ children }) => {
                   className="flex items-center space-x-2 hover:bg-gray-100 rounded-full focus:outline-none p-1 transition-colors"
                   onClick={() => setDropdownOpen(!dropdownOpen)}
                 >
-                  <img
-                    className="h-8 w-8 rounded-full object-cover border border-gray-200"
-                    src={currentUser.avatar}
-                    alt={currentUser.name}
-                  />
+                  <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">
+                    {currentUser?.username?.charAt(0).toUpperCase() || 'U'}
+                  </div>
                   <ChevronDown size={16} className="text-gray-600" />
                 </button>
                 
                 {dropdownOpen && (
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg p-2 z-10">
                     <div className="px-4 py-2 border-b">
-                      <p className="text-sm font-medium text-gray-900">{currentUser.name}</p>
-                      <p className="text-xs text-gray-500">{currentUser.email}</p>
+                      <p className="text-sm font-medium text-gray-900">{currentUser?.username || 'User'}</p>
+                      <p className="text-xs text-gray-500">{currentUser?.email || 'Email'}</p>
                     </div>
-                    <a href="#profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded">Profile</a>
-                    <a href="#settings" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded">Settings</a>
+                    <Link to="/dashboard/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded">Profile</Link>
+                    <Link to="/dashboard/settings" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded">Settings</Link>
                     <button
                       onClick={handleLogout}
                       className="w-full text-left block px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded"
@@ -253,18 +266,18 @@ const DashboardLayout = ({ children }) => {
               <nav className="flex" aria-label="Breadcrumb">
                 <ol className="inline-flex items-center space-x-1 md:space-x-3">
                   <li className="inline-flex items-center">
-                    <a href="#" className="text-gray-700 hover:text-blue-600 text-sm font-medium">
+                    <Link to="/dashboard" className="text-gray-700 hover:text-blue-600 text-sm font-medium">
                       Home
-                    </a>
+                    </Link>
                   </li>
                   <li>
                     <div className="flex items-center">
                       <svg className="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd"></path>
                       </svg>
-                      <a href="#" className="ml-1 text-sm font-medium text-gray-700 hover:text-blue-600 md:ml-2">
-                        Dashboard
-                      </a>
+                      <span className="ml-1 text-sm font-medium text-gray-700 md:ml-2">
+                        {location.pathname.split('/').pop().charAt(0).toUpperCase() + location.pathname.split('/').pop().slice(1) || 'Dashboard'}
+                      </span>
                     </div>
                   </li>
                 </ol>
@@ -278,19 +291,19 @@ const DashboardLayout = ({ children }) => {
         
         {/* Page content */}
         <main className="flex-1 overflow-y-auto p-6 bg-gray-50">
-          {children}
+          <Outlet />
         </main>
         
         {/* Footer */}
         <footer className="bg-white border-t py-3 px-6">
           <div className="flex flex-col sm:flex-row justify-between items-center">
             <p className="text-sm text-gray-500">
-              &copy; 2025 AeroEngine Maintenance System
+              &copy; {new Date().getFullYear()} AeroEngine Maintenance System
             </p>
             <div className="flex space-x-4 mt-2 sm:mt-0">
-              <a href="#privacy" className="text-sm text-gray-500 hover:text-blue-600">Privacy Policy</a>
-              <a href="#terms" className="text-sm text-gray-500 hover:text-blue-600">Terms of Service</a>
-              <a href="#contact" className="text-sm text-gray-500 hover:text-blue-600">Contact Support</a>
+              <Link to="/dashboard/privacy" className="text-sm text-gray-500 hover:text-blue-600">Privacy Policy</Link>
+              <Link to="/dashboard/terms" className="text-sm text-gray-500 hover:text-blue-600">Terms of Service</Link>
+              <Link to="/dashboard/help" className="text-sm text-gray-500 hover:text-blue-600">Contact Support</Link>
             </div>
           </div>
         </footer>

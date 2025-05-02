@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   LineChart,
   Line,
@@ -9,11 +10,7 @@ import {
   Legend,
   ResponsiveContainer,
   AreaChart,
-  Area,
-  PieChart,
-  Pie,
-  Cell,
-  Sector
+  Area
 } from 'recharts';
 import {
   AlertTriangle,
@@ -31,60 +28,7 @@ import {
   Download,
   Zap
 } from 'lucide-react';
-
-// Sample engine data
-const sampleEngine = {
-  id: 1,
-  serial_number: "ENG-2024-001",
-  model: "GE9X-105B1A",
-  aircraft_id: "AC-747-123",
-  installation_date: "2024-01-15T00:00:00.000Z",
-  total_cycles: 346,
-  status: "active",
-  cycles: [
-    { cycle: 300, sensor_data: { s2: 1590, s3: 1402, s4: 14.6 }, failure_probability: 0.12, rul: 120, timestamp: "2025-03-01T10:00:00.000Z" },
-    { cycle: 310, sensor_data: { s2: 1595, s3: 1405, s4: 14.8 }, failure_probability: 0.18, rul: 110, timestamp: "2025-03-10T10:00:00.000Z" },
-    { cycle: 320, sensor_data: { s2: 1612, s3: 1410, s4: 15.1 }, failure_probability: 0.35, rul: 80, timestamp: "2025-03-20T10:00:00.000Z" },
-    { cycle: 330, sensor_data: { s2: 1625, s3: 1418, s4: 15.4 }, failure_probability: 0.62, rul: 40, timestamp: "2025-04-01T10:00:00.000Z" },
-    { cycle: 340, sensor_data: { s2: 1640, s3: 1425, s4: 15.8 }, failure_probability: 0.78, rul: 22, timestamp: "2025-04-15T10:00:00.000Z" },
-    { cycle: 346, sensor_data: { s2: 1650, s3: 1435, s4: 16.1 }, failure_probability: 0.87, rul: 12, timestamp: "2025-04-30T10:00:00.000Z" }
-  ],
-  maintenance_history: [
-    { 
-      id: 1, 
-      engine_id: 1, 
-      maintenance_type: "scheduled", 
-      description: "100-cycle inspection", 
-      start_date: "2024-04-10T08:00:00.000Z", 
-      end_date: "2024-04-10T14:30:00.000Z", 
-      cycle_count: 100,
-      parts_replaced: ["Oil filter", "Air filter"],
-      performed_by: "John Smith"
-    },
-    { 
-      id: 2, 
-      engine_id: 1, 
-      maintenance_type: "scheduled", 
-      description: "200-cycle inspection and maintenance", 
-      start_date: "2024-08-15T09:00:00.000Z", 
-      end_date: "2024-08-15T17:00:00.000Z", 
-      cycle_count: 200,
-      parts_replaced: ["Fuel nozzles", "Ignition leads", "O-rings"],
-      performed_by: "Emma Johnson"
-    },
-    { 
-      id: 3, 
-      engine_id: 1, 
-      maintenance_type: "unscheduled", 
-      description: "Sensor calibration due to anomaly detection", 
-      start_date: "2025-03-05T10:30:00.000Z", 
-      end_date: "2025-03-05T13:45:00.000Z", 
-      cycle_count: 305,
-      parts_replaced: [],
-      performed_by: "David Williams"
-    }
-  ]
-};
+import { enginesAPI } from '../../services/api';
 
 // Radial progress bar component for visual RUL representation
 const RadialProgressBar = ({ value, maxValue, size = 150, strokeWidth = 10 }) => {
@@ -128,7 +72,7 @@ const RadialProgressBar = ({ value, maxValue, size = 150, strokeWidth = 10 }) =>
       </svg>
       {/* Center text */}
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <div className="text-3xl font-bold">{value}</div>
+        <div className="text-3xl font-bold">{Math.round(value)}</div>
         <div className="text-xs text-gray-500">cycles remaining</div>
       </div>
     </div>
@@ -166,9 +110,15 @@ const MaintenanceTimeline = ({ maintenanceHistory }) => {
                     <p className="text-xs text-gray-500 mt-1">
                       Cycle count: {record.cycle_count}
                     </p>
-                    {record.parts_replaced && record.parts_replaced.length > 0 && (
+                    {record.parts_replaced && (
                       <p className="mt-1 text-xs text-gray-600">
-                        Parts replaced: {record.parts_replaced.join(', ')}
+                        Parts replaced: {typeof record.parts_replaced === 'string' 
+                          ? record.parts_replaced 
+                          : Array.isArray(record.parts_replaced) 
+                            ? record.parts_replaced.join(', ')
+                            : typeof record.parts_replaced === 'object'
+                              ? Object.keys(record.parts_replaced).join(', ')
+                              : ''}
                       </p>
                     )}
                   </div>
@@ -199,28 +149,30 @@ const SensorReadout = ({ name, value, unit, trend, trendPeriod = "past week" }) 
             {value} <span className="text-sm text-gray-500">{unit}</span>
           </p>
         </div>
-        <div className={`flex items-center text-xs ${
-          trend > 0 
-            ? 'text-red-500' 
-            : trend < 0 
-            ? 'text-green-500'
-            : 'text-gray-400'
-        }`}>
-          {trend !== 0 && (
-            <span className="mr-1">
-              {trend > 0 ? (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                </svg>
-              ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              )}
-            </span>
-          )}
-          <span>{Math.abs(trend)}% {trend > 0 ? 'increase' : trend < 0 ? 'decrease' : 'no change'}</span>
-        </div>
+        {trend !== undefined && (
+          <div className={`flex items-center text-xs ${
+            trend > 0 
+              ? 'text-red-500' 
+              : trend < 0 
+              ? 'text-green-500'
+              : 'text-gray-400'
+          }`}>
+            {trend !== 0 && (
+              <span className="mr-1">
+                {trend > 0 ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                )}
+              </span>
+            )}
+            <span>{Math.abs(trend)}% {trend > 0 ? 'increase' : trend < 0 ? 'decrease' : 'no change'}</span>
+          </div>
+        )}
       </div>
       <p className="text-xs text-gray-500 mt-1">Trend over {trendPeriod}</p>
     </div>
@@ -229,32 +181,32 @@ const SensorReadout = ({ name, value, unit, trend, trendPeriod = "past week" }) 
 
 // Engine Detail View Component
 const EngineDetail = () => {
+  const { engineId } = useParams();
   const [engine, setEngine] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activePredictionTab, setActivePredictionTab] = useState('probability');
+  const navigate = useNavigate();
   
-  // Simulate API call to fetch engine data
+  // Fetch engine details
   useEffect(() => {
     const fetchEngineDetail = async () => {
       try {
-        // In a real app, this would be an API call:
-        // const response = await axios.get(`/api/engines/${engineId}`);
-        // setEngine(response.data);
-        
-        // Simulate API delay
-        setTimeout(() => {
-          setEngine(sampleEngine);
-          setLoading(false);
-        }, 1000);
+        setLoading(true);
+        const response = await enginesAPI.getById(engineId);
+        setEngine(response.data);
+        setLoading(false);
       } catch (err) {
+        console.error('Failed to load engine details:', err);
         setError('Failed to load engine details. Please try again later.');
         setLoading(false);
       }
     };
 
-    fetchEngineDetail();
-  }, []);
+    if (engineId) {
+      fetchEngineDetail();
+    }
+  }, [engineId]);
 
   if (loading) {
     return (
@@ -308,22 +260,20 @@ const EngineDetail = () => {
   }
 
   // Get the latest cycle data
-  const latestCycle = engine.cycles[engine.cycles.length - 1];
+  const latestCycle = engine.cycles?.length > 0 ? engine.cycles[engine.cycles.length - 1] : null;
   
   // Format failure probability data for charts
   const failureProbData = engine.cycles?.map(cycle => ({
     cycle: cycle.cycle,
     probability: cycle.failure_probability || 0
-  }));
-
-  // Format sensor data for charts
-  const sensorData = engine.cycles;
+  })) || [];
 
   return (
     <div className="space-y-6">
       {/* Back navigation */}
       <div className="animate-fadeIn">
         <button
+          onClick={() => navigate('/dashboard/engines')}
           className="inline-flex items-center text-sm text-primary-600 hover:text-primary-700"
         >
           <ChevronLeft size={16} className="mr-1" />
@@ -353,197 +303,266 @@ const EngineDetail = () => {
           </div>
           
           <div className="mt-4 md:mt-0 flex flex-wrap gap-2">
-            <button
+            <Link
+              to={`/dashboard/engines/${engineId}/edit`}
               className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md bg-white text-sm text-gray-700 hover:bg-gray-50 shadow-sm transition-colors"
             >
               <Settings size={15} className="mr-1.5" />
               Engine Settings
-            </button>
-            <button
+            </Link>
+            <Link
+              to={`/dashboard/maintenance/new?engineId=${engineId}`}
               className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md bg-white text-sm text-gray-700 hover:bg-gray-50 shadow-sm transition-colors"
             >
               <Plus size={15} className="mr-1.5" />
               Add Maintenance
-            </button>
+            </Link>
           </div>
         </div>
         
         {/* Engine status info */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 animate-fadeInUp" style={{animationDelay: '0.2s'}}>
-          <div className="p-4 bg-gray-50 rounded-lg shadow-md transition-all duration-300 hover:shadow-lg">
-            <div className="flex items-center">
-              <Gauge size={20} className="text-blue-500 mr-2" />
-              <span className="text-sm font-medium text-gray-700">Status</span>
-            </div>
-            <div className="mt-2">
-              <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                latestCycle.failure_probability > 0.7 
-                  ? 'bg-red-100 text-red-800' 
-                  : engine.status === 'maintenance'
-                  ? 'bg-yellow-100 text-yellow-800'
-                  : 'bg-green-100 text-green-800'
-              }`}>
-                {latestCycle.failure_probability > 0.7 
-                  ? 'Warning' 
-                  : engine.status.charAt(0).toUpperCase() + engine.status.slice(1)}
-              </span>
-              {latestCycle.failure_probability > 0.7 && (
-                <p className="mt-2 text-xs text-red-600">
-                  High failure probability detected
-                </p>
-              )}
-            </div>
-          </div>
-          
-          <div className="p-4 bg-gray-50 rounded-lg shadow-md transition-all duration-300 hover:shadow-lg">
-            <div className="flex items-center">
-              <Clock size={20} className="text-blue-500 mr-2" />
-              <span className="text-sm font-medium text-gray-700">Total Cycles</span>
-            </div>
-            <div className="mt-2 text-xl font-semibold text-gray-900">
-              {engine.total_cycles || 0}
-              <span className="ml-2 text-xs font-normal text-gray-500">
-                Last cycle: {new Date(latestCycle.timestamp).toLocaleDateString()}
-              </span>
-            </div>
-          </div>
-          
-          <div className="p-4 bg-gray-50 rounded-lg shadow-md transition-all duration-300 hover:shadow-lg">
-            <div className="flex items-center">
-              <Calendar size={20} className="text-blue-500 mr-2" />
-              <span className="text-sm font-medium text-gray-700">Installation Date</span>
-            </div>
-            <div className="mt-2 text-sm text-gray-700">
-              {engine.installation_date 
-                ? new Date(engine.installation_date).toLocaleDateString() 
-                : 'Not specified'}
-              <span className="block text-xs text-gray-500 mt-1">
-                {engine.installation_date 
-                  ? `${Math.round((new Date() - new Date(engine.installation_date)) / (1000 * 60 * 60 * 24 * 30))} months in service` 
-                  : ''}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      {/* Prediction & RUL section */}
-      <div className="bg-white rounded-lg shadow-lg p-6 animate-fadeInUp" style={{animationDelay: '0.3s'}}>
-        <div className="flex items-center mb-4">
-          <Zap size={20} className="text-blue-500 mr-2" />
-          <h2 className="text-lg font-medium text-gray-800">Predictive Analytics</h2>
-        </div>
-        
-        <div className="flex border-b border-gray-200 mb-4">
-          <button
-            className={`py-2 px-4 font-medium text-sm ${
-              activePredictionTab === 'probability' 
-                ? 'text-blue-600 border-b-2 border-blue-500' 
-                : 'text-gray-500 hover:text-blue-500'
-            }`}
-            onClick={() => setActivePredictionTab('probability')}
-          >
-            Failure Probability
-          </button>
-          <button
-            className={`py-2 px-4 font-medium text-sm ${
-              activePredictionTab === 'rul' 
-                ? 'text-blue-600 border-b-2 border-blue-500' 
-                : 'text-gray-500 hover:text-blue-500'
-            }`}
-            onClick={() => setActivePredictionTab('rul')}
-          >
-            Remaining Useful Life
-          </button>
-          <button
-            className={`py-2 px-4 font-medium text-sm ${
-              activePredictionTab === 'sensors' 
-                ? 'text-blue-600 border-b-2 border-blue-500' 
-                : 'text-gray-500 hover:text-blue-500'
-            }`}
-            onClick={() => setActivePredictionTab('sensors')}
-          >
-            Sensor Trends
-          </button>
-        </div>
-        
-        {activePredictionTab === 'probability' && (
-          <div className="animate-fadeIn">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="md:col-span-2">
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={failureProbData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="cycle" />
-                      <YAxis domain={[0, 1]} tickFormatter={(value) => `${Math.round(value * 100)}%`} />
-                      <Tooltip formatter={(value) => [`${Math.round(value * 100)}%`, 'Probability']} />
-                      <Area 
-                        type="monotone" 
-                        dataKey="probability" 
-                        stroke="#ef5350" 
-                        fill="#ffcdd2" 
-                        activeDot={{ r: 8 }} 
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-                <p className="text-sm text-gray-600 mt-2">
-                  Failure probability trend over engine cycles shows significant increase in recent cycles, 
-                  indicating maintenance should be scheduled soon.
-                </p>
+        {latestCycle && (
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 animate-fadeInUp" style={{animationDelay: '0.2s'}}>
+            <div className="p-4 bg-gray-50 rounded-lg shadow-md transition-all duration-300 hover:shadow-lg">
+              <div className="flex items-center">
+                <Gauge size={20} className="text-blue-500 mr-2" />
+                <span className="text-sm font-medium text-gray-700">Status</span>
               </div>
-              
-              <div className="flex flex-col items-center justify-center p-4 bg-gray-50 rounded-lg">
-                <div className={`text-6xl font-bold ${
+              <div className="mt-2">
+                <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                   latestCycle.failure_probability > 0.7 
-                    ? 'text-red-600' 
-                    : latestCycle.failure_probability > 0.5 
-                    ? 'text-yellow-600' 
-                    : 'text-green-600'
+                    ? 'bg-red-100 text-red-800' 
+                    : engine.status === 'maintenance'
+                    ? 'bg-yellow-100 text-yellow-800'
+                    : 'bg-green-100 text-green-800'
                 }`}>
-                  {Math.round(latestCycle.failure_probability * 100)}%
-                </div>
-                <div className="text-gray-600 text-sm mt-2">Current Failure Probability</div>
-                <div className="mt-4 bg-white p-4 rounded-lg shadow-sm w-full">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">Recommendation</h4>
-                  {latestCycle.failure_probability > 0.7 ? (
-                    <p className="text-sm text-red-600">
-                      <AlertTriangle size={16} className="inline mr-1" />
-                      Immediate maintenance recommended
-                    </p>
-                  ) : latestCycle.failure_probability > 0.5 ? (
-                    <p className="text-sm text-yellow-600">
-                      <AlertTriangle size={16} className="inline mr-1" />
-                      Schedule maintenance within next 2 weeks
-                    </p>
-                  ) : (
-                    <p className="text-sm text-green-600">
-                      <CheckCircle size={16} className="inline mr-1" />
-                      No maintenance required at this time
-                    </p>
-                  )}
-                </div>
+                  {latestCycle.failure_probability > 0.7 
+                    ? 'Warning' 
+                    : engine.status.charAt(0).toUpperCase() + engine.status.slice(1)}
+                </span>
+                {latestCycle.failure_probability > 0.7 && (
+                  <p className="mt-2 text-xs text-red-600">
+                    High failure probability detected
+                  </p>
+                )}
+              </div>
+            </div>
+            
+            <div className="p-4 bg-gray-50 rounded-lg shadow-md transition-all duration-300 hover:shadow-lg">
+              <div className="flex items-center">
+                <Clock size={20} className="text-blue-500 mr-2" />
+                <span className="text-sm font-medium text-gray-700">Total Cycles</span>
+              </div>
+              <div className="mt-2 text-xl font-semibold text-gray-900">
+                {engine.total_cycles || 0}
+                <span className="ml-2 text-xs font-normal text-gray-500">
+                  Last cycle: {latestCycle.timestamp ? new Date(latestCycle.timestamp).toLocaleDateString() : 'N/A'}
+                </span>
+              </div>
+            </div>
+            
+            <div className="p-4 bg-gray-50 rounded-lg shadow-md transition-all duration-300 hover:shadow-lg">
+              <div className="flex items-center">
+                <Calendar size={20} className="text-blue-500 mr-2" />
+                <span className="text-sm font-medium text-gray-700">Installation Date</span>
+              </div>
+              <div className="mt-2 text-sm text-gray-700">
+                {engine.installation_date 
+                  ? new Date(engine.installation_date).toLocaleDateString() 
+                  : 'Not specified'}
+                <span className="block text-xs text-gray-500 mt-1">
+                  {engine.installation_date 
+                    ? `${Math.round((new Date() - new Date(engine.installation_date)) / (1000 * 60 * 60 * 24 * 30))} months in service` 
+                    : ''}
+                </span>
               </div>
             </div>
           </div>
         )}
-        
-        {activePredictionTab === 'rul' && (
-          <div className="animate-fadeIn">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="flex flex-col items-center justify-center">
-                <RadialProgressBar value={latestCycle.rul} maxValue={120} />
-                <div className="mt-4 text-center">
-                  <p className="text-sm text-gray-600">
-                    Based on predictive model analysis, the engine has approximately 
-                    <span className="font-bold text-blue-600"> {latestCycle.rul} cycles </span> 
-                    of useful life remaining before maintenance is required.
+      </div>
+      
+      {/* Prediction & RUL section */}
+      {latestCycle && (
+        <div className="bg-white rounded-lg shadow-lg p-6 animate-fadeInUp" style={{animationDelay: '0.3s'}}>
+          <div className="flex items-center mb-4">
+            <Zap size={20} className="text-blue-500 mr-2" />
+            <h2 className="text-lg font-medium text-gray-800">Predictive Analytics</h2>
+          </div>
+          
+          <div className="flex border-b border-gray-200 mb-4">
+            <button
+              className={`py-2 px-4 font-medium text-sm ${
+                activePredictionTab === 'probability' 
+                  ? 'text-blue-600 border-b-2 border-blue-500' 
+                  : 'text-gray-500 hover:text-blue-500'
+              }`}
+              onClick={() => setActivePredictionTab('probability')}
+            >
+              Failure Probability
+            </button>
+            <button
+              className={`py-2 px-4 font-medium text-sm ${
+                activePredictionTab === 'rul' 
+                  ? 'text-blue-600 border-b-2 border-blue-500' 
+                  : 'text-gray-500 hover:text-blue-500'
+              }`}
+              onClick={() => setActivePredictionTab('rul')}
+            >
+              Remaining Useful Life
+            </button>
+            <button
+              className={`py-2 px-4 font-medium text-sm ${
+                activePredictionTab === 'sensors' 
+                  ? 'text-blue-600 border-b-2 border-blue-500' 
+                  : 'text-gray-500 hover:text-blue-500'
+              }`}
+              onClick={() => setActivePredictionTab('sensors')}
+            >
+              Sensor Trends
+            </button>
+          </div>
+          
+          {activePredictionTab === 'probability' && failureProbData.length > 0 && (
+            <div className="animate-fadeIn">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="md:col-span-2">
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={failureProbData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="cycle" />
+                        <YAxis domain={[0, 1]} tickFormatter={(value) => `${Math.round(value * 100)}%`} />
+                        <Tooltip formatter={(value) => [`${Math.round(value * 100)}%`, 'Probability']} />
+                        <Area 
+                          type="monotone" 
+                          dataKey="probability" 
+                          stroke="#ef5350" 
+                          fill="#ffcdd2" 
+                          activeDot={{ r: 8 }} 
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <p className="text-sm text-gray-600 mt-2">
+                    Failure probability trend over engine cycles shows 
+                    {latestCycle.failure_probability > 0.5 
+                      ? ' significant increase in recent cycles, indicating maintenance should be scheduled soon.' 
+                      : ' normal behavior with no immediate concerns.'}
+                  </p>
+                </div>
+                
+                <div className="flex flex-col items-center justify-center p-4 bg-gray-50 rounded-lg">
+                  <div className={`text-6xl font-bold ${
+                    latestCycle.failure_probability > 0.7 
+                      ? 'text-red-600' 
+                      : latestCycle.failure_probability > 0.5 
+                      ? 'text-yellow-600' 
+                      : 'text-green-600'
+                  }`}>
+                    {Math.round(latestCycle.failure_probability * 100)}%
+                  </div>
+                  <div className="text-gray-600 text-sm mt-2">Current Failure Probability</div>
+                  <div className="mt-4 bg-white p-4 rounded-lg shadow-sm w-full">
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">Recommendation</h4>
+                    {latestCycle.failure_probability > 0.7 ? (
+                      <p className="text-sm text-red-600">
+                        <AlertTriangle size={16} className="inline mr-1" />
+                        Immediate maintenance recommended
+                      </p>
+                    ) : latestCycle.failure_probability > 0.5 ? (
+                      <p className="text-sm text-yellow-600">
+                        <AlertTriangle size={16} className="inline mr-1" />
+                        Schedule maintenance within next 2 weeks
+                      </p>
+                    ) : (
+                      <p className="text-sm text-green-600">
+                        <CheckCircle size={16} className="inline mr-1" />
+                        No maintenance required at this time
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {activePredictionTab === 'rul' && (
+            <div className="animate-fadeIn">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="flex flex-col items-center justify-center">
+                  {latestCycle.rul !== undefined && (
+                    <RadialProgressBar value={latestCycle.rul} maxValue={120} />
+                  )}
+                  <div className="mt-4 text-center">
+                    <p className="text-sm text-gray-600">
+                      Based on predictive model analysis, the engine has approximately 
+                      <span className="font-bold text-blue-600"> {Math.round(latestCycle.rul || 0)} cycles </span> 
+                      of useful life remaining before maintenance is required.
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="md:col-span-2">
+                  {engine.cycles?.length > 0 && (
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={engine.cycles}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="cycle" />
+                          <YAxis />
+                          <Tooltip />
+                          <Legend />
+                          <Line 
+                            type="monotone" 
+                            dataKey="rul" 
+                            name="Remaining Useful Life" 
+                            stroke="#2196f3" 
+                            strokeWidth={2}
+                            dot={{ r: 4 }}
+                            activeDot={{ r: 8 }}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                  <p className="text-sm text-gray-600 mt-2">
+                    {latestCycle.rul < 30 
+                      ? 'The RUL trend shows accelerated degradation in recent cycles, indicating a potential component issue that should be addressed.' 
+                      : 'The RUL trend shows normal degradation patterns within expected parameters.'}
                   </p>
                 </div>
               </div>
+            </div>
+          )}
+          
+          {activePredictionTab === 'sensors' && (
+            <div className="animate-fadeIn">
+              {latestCycle.sensor_data && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                  <SensorReadout 
+                    name="Fan Speed (s2)" 
+                    value={latestCycle.sensor_data.s2 || 'N/A'}
+                    unit="RPM"
+                  />
+                  <SensorReadout 
+                    name="Core Speed (s3)" 
+                    value={latestCycle.sensor_data.s3 || 'N/A'}
+                    unit="RPM"
+                  />
+                  <SensorReadout 
+                    name="EGT (s4)" 
+                    value={latestCycle.sensor_data.s4 || 'N/A'}
+                    unit="°C"
+                  />
+                  <SensorReadout 
+                    name="Oil Pressure (s5)" 
+                    value={latestCycle.sensor_data.s5 || 'N/A'}
+                    unit="PSI"
+                  />
+                </div>
+              )}
               
-              <div className="md:col-span-2">
+              {engine.cycles?.length > 0 && (
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={engine.cycles}>
@@ -554,94 +573,39 @@ const EngineDetail = () => {
                       <Legend />
                       <Line 
                         type="monotone" 
-                        dataKey="rul" 
-                        name="Remaining Useful Life" 
+                        dataKey={(data) => data.sensor_data?.s2} 
+                        name="Fan Speed (s2)" 
                         stroke="#2196f3" 
+                        activeDot={{ r: 8 }} 
                         strokeWidth={2}
-                        dot={{ r: 4 }}
-                        activeDot={{ r: 8 }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey={(data) => data.sensor_data?.s3} 
+                        name="Core Speed (s3)" 
+                        stroke="#4caf50" 
+                        strokeWidth={2}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey={(data) => data.sensor_data?.s4} 
+                        name="EGT (s4)" 
+                        stroke="#ff9800" 
+                        strokeWidth={2}
                       />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
-                <p className="text-sm text-gray-600 mt-2">
-                  The RUL trend shows accelerated degradation after cycle 320, indicating 
-                  a potential component issue that should be addressed.
-                </p>
-              </div>
+              )}
+              <p className="text-sm text-gray-600 mt-2">
+                {latestCycle.failure_probability > 0.5 
+                  ? 'Sensor trends show increasing values, which correlate with the rising failure probability. The pattern matching algorithms have identified this pattern as indicative of potential component wear.' 
+                  : 'Sensor trends show normal behavior within expected parameters.'}
+              </p>
             </div>
-          </div>
-        )}
-        
-        {activePredictionTab === 'sensors' && (
-          <div className="animate-fadeIn">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              <SensorReadout 
-                name="Fan Speed (s2)" 
-                value={latestCycle.sensor_data.s2}
-                unit="RPM"
-                trend={3.8}
-              />
-              <SensorReadout 
-                name="Core Speed (s3)" 
-                value={latestCycle.sensor_data.s3}
-                unit="RPM"
-                trend={2.1}
-              />
-              <SensorReadout 
-                name="EGT (s4)" 
-                value={latestCycle.sensor_data.s4}
-                unit="°C"
-                trend={5.2}
-              />
-              <SensorReadout 
-                name="Vibration" 
-                value="0.82"
-                unit="mm/s"
-                trend={7.4}
-              />
-            </div>
-            
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={sensorData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="cycle" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Line 
-                    type="monotone" 
-                    dataKey={(data) => data.sensor_data.s2} 
-                    name="Fan Speed (s2)" 
-                    stroke="#2196f3" 
-                    activeDot={{ r: 8 }} 
-                    strokeWidth={2}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey={(data) => data.sensor_data.s3} 
-                    name="Core Speed (s3)" 
-                    stroke="#4caf50" 
-                    strokeWidth={2}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey={(data) => data.sensor_data.s4} 
-                    name="EGT (s4)" 
-                    stroke="#ff9800" 
-                    strokeWidth={2}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-            <p className="text-sm text-gray-600 mt-2">
-              Sensor trends show increasing fan speed and EGT, which correlate with the rising failure probability. 
-              The sensor pattern matching algorithms have identified this pattern as indicative of bearing wear.
-            </p>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
       
       {/* Maintenance History */}
       <div className="bg-white rounded-lg shadow-lg p-6 animate-fadeInUp" style={{animationDelay: '0.4s'}}>
@@ -650,12 +614,13 @@ const EngineDetail = () => {
             <Wrench size={20} className="text-blue-500 mr-2" />
             <h2 className="text-lg font-medium text-gray-800">Maintenance History</h2>
           </div>
-          <button
+          <Link
+            to={`/dashboard/maintenance/new?engineId=${engineId}`}
             className="inline-flex items-center text-sm text-primary-600 hover:text-primary-700 bg-blue-50 hover:bg-blue-100 rounded-lg px-3 py-1 transition-colors"
           >
             <Plus size={16} className="mr-1" />
             Add maintenance record
-          </button>
+          </Link>
         </div>
         
         {engine.maintenance_history && engine.maintenance_history.length > 0 ? (
@@ -692,7 +657,10 @@ const EngineDetail = () => {
             </div>
           </button>
           
-          <button className="bg-white rounded-lg p-4 shadow-md flex items-center hover:shadow-lg transition-shadow">
+          <Link 
+            to={`/dashboard/maintenance/new?engineId=${engineId}`}
+            className="bg-white rounded-lg p-4 shadow-md flex items-center hover:shadow-lg transition-shadow"
+          >
             <div className="p-2 bg-blue-100 rounded-full mr-3">
               <ArrowUpRight size={18} className="text-blue-600" />
             </div>
@@ -700,7 +668,7 @@ const EngineDetail = () => {
               <p className="font-medium text-gray-800">Schedule Maintenance</p>
               <p className="text-xs text-gray-500">Based on predictions</p>
             </div>
-          </button>
+          </Link>
         </div>
       </div>
       

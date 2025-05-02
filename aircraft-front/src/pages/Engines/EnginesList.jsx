@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import axios from 'axios'
+import { Link, useNavigate } from 'react-router-dom'
 import { AlertTriangle, ChevronRight, Plus, Search } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
+import { enginesAPI } from '../../services/api'
 
 const EnginesList = () => {
   const [engines, setEngines] = useState([])
@@ -10,14 +10,17 @@ const EnginesList = () => {
   const [error, setError] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const { currentUser } = useAuth()
+  const navigate = useNavigate()
   
   useEffect(() => {
     const fetchEngines = async () => {
       try {
-        const response = await axios.get('/api/engines')
+        setLoading(true)
+        const response = await enginesAPI.getAll()
         setEngines(response.data)
         setLoading(false)
       } catch (err) {
+        console.error('Failed to load engines:', err)
         setError('Failed to load engines. Please try again later.')
         setLoading(false)
       }
@@ -27,7 +30,7 @@ const EnginesList = () => {
   }, [])
   
   const filteredEngines = engines.filter(engine => 
-    engine.serial_number.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    engine.serial_number?.toLowerCase().includes(searchTerm.toLowerCase()) || 
     engine.model?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     engine.aircraft_id?.toLowerCase().includes(searchTerm.toLowerCase())
   )

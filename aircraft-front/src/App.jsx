@@ -15,6 +15,7 @@ import AlertsList from './pages/Alerts/AlertsList'
 // Layout components
 import AuthLayout from './components/Layouts/AuthLayout'
 import DashboardLayout from './components/Layouts/DashboardLayout'
+import PrivateRoute from './components/PrivateRoute'
 
 // Context
 import { AuthProvider } from './contexts/AuthContext'
@@ -31,15 +32,17 @@ function App() {
             <Route path="register" element={<Register />} />
           </Route>
           
-          {/* Dashboard Routes */}
-          <Route path="/dashboard" element={<DashboardLayout />}>
-            <Route index element={<Dashboard />} />
-            <Route path="engines" element={<EnginesList />} />
-            <Route path="engines/:engineId" element={<EngineDetail />} />
-            <Route path="maintenance" element={<MaintenanceList />} />
-            <Route path="maintenance/new" element={<MaintenanceForm />} />
-            <Route path="maintenance/:maintenanceId/edit" element={<MaintenanceForm />} />
-            <Route path="alerts" element={<AlertsList />} />
+          {/* Protected Dashboard Routes */}
+          <Route element={<PrivateRoute />}>
+            <Route path="/dashboard" element={<DashboardLayout />}>
+              <Route index element={<Dashboard />} />
+              <Route path="engines" element={<EnginesList />} />
+              <Route path="engines/:engineId" element={<EngineDetail />} />
+              <Route path="maintenance" element={<MaintenanceList />} />
+              <Route path="maintenance/new" element={<MaintenanceForm />} />
+              <Route path="maintenance/:maintenanceId/edit" element={<MaintenanceForm />} />
+              <Route path="alerts" element={<AlertsList />} />
+            </Route>
           </Route>
           
           {/* Catch all */}

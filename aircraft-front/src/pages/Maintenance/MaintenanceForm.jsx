@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { 
   Save, 
   X, 
@@ -14,27 +15,21 @@ import {
   RotateCcw,
   CheckCircle
 } from 'lucide-react';
+import { maintenanceAPI, enginesAPI } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 
 const MaintenanceForm = () => {
-  // Sample engine options for demonstration
-  const engineOptions = [
-    { id: 1, label: "Engine ENG-2024-001 (Aircraft: AC-747-123)" },
-    { id: 2, label: "Engine ENG-2023-042 (Aircraft: AC-A320-456)" },
-    { id: 3, label: "Engine ENG-2023-015 (Aircraft: AC-737-789)" },
-    { id: 4, label: "Engine ENG-2022-108 (Aircraft: AC-A380-001)" }
-  ];
+  const { maintenanceId } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { currentUser } = useAuth();
+  const searchParams = new URLSearchParams(location.search);
+  const engineIdFromUrl = searchParams.get('engineId');
   
-  const maintenanceTypes = [
-    { value: "scheduled", label: "Scheduled" },
-    { value: "unscheduled", label: "Unscheduled" },
-    { value: "overhaul", label: "Overhaul" },
-    { value: "inspection", label: "Inspection" },
-    { value: "repair", label: "Repair" }
-  ];
-  
-  const [isEditing, setIsEditing] = useState(false);
+  const [engineOptions, setEngineOptions] = useState([]);
+  const [isEditing, setIsEditing] = useState(!!maintenanceId);
   const [formData, setFormData] = useState({
-    engine_id: '',
+    engine_id: engineIdFromUrl || '',
     maintenance_type: 'scheduled',
     description: '',
     start_date: new Date().toISOString().split('T')[0],
@@ -46,31 +41,61 @@ const MaintenanceForm = () => {
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [loading, setLoading] = useState(true);
   
-  // If this were a real app, you'd fetch data for editing here
+  const maintenanceTypes = [
+    { value: "scheduled", label: "Scheduled" },
+    { value: "unscheduled", label: "Unscheduled" },
+    { value: "overhaul", label: "Overhaul" },
+    { value: "inspection", label: "Inspection" },
+    { value: "repair", label: "Repair" }
+  ];
+  
+  // Fetch engines and maintenance record (if editing)
   useEffect(() => {
-    // Simulate loading maintenance record for editing
-    if (isEditing) {
-      // This would be an API call in a real app
-      // const fetchMaintenanceRecord = async () => {
-      //   const response = await maintenanceAPI.getById(maintenanceId);
-      //   setFormData(response.data);
-      // };
-      
-      // For demo purposes, we'll just set mock data
-      setTimeout(() => {
-        setFormData({
-          engine_id: '3',
-          maintenance_type: 'scheduled',
-          description: '500-cycle inspection and maintenance',
-          start_date: '2025-04-28',
-          end_date: '',
-          parts_replaced: 'Oil filter, Air filter, Fuel nozzles',
-          notes: 'Engine showing signs of wear on fan blades. Consider replacement during next maintenance.'
-        });
-      }, 500);
-    }
-  }, [isEditing]);
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch available engines
+        const enginesResponse = await enginesAPI.getAll();
+        const options = enginesResponse.data.map(engine => ({
+          id: engine.id,
+          label: `Engine ${engine.serial_number} (Aircraft: ${engine.aircraft_id || 'N/A'})`
+        }));
+        setEngineOptions(options);
+        
+        // If editing, fetch maintenance record
+        if (isEditing && maintenanceId) {
+          const maintenanceResponse = await maintenanceAPI.getById(maintenanceId);
+          
+          // Format parts_replaced as a string if it's an array or object
+          let partsReplaced = maintenanceResponse.data.parts_replaced;
+          if (Array.isArray(partsReplaced)) {
+            partsReplaced = partsReplaced.join(', ');
+          } else if (typeof partsReplaced === 'object' && partsReplaced !== null) {
+            partsReplaced = Object.keys(partsReplaced).join(', ');
+          }
+          
+          setFormData({
+            ...maintenanceResponse.data,
+            // Format dates to YYYY-MM-DD for input fields
+            start_date: maintenanceResponse.data.start_date ? new Date(maintenanceResponse.data.start_date).toISOString().split('T')[0] : '',
+            end_date: maintenanceResponse.data.end_date ? new Date(maintenanceResponse.data.end_date).toISOString().split('T')[0] : '',
+            parts_replaced: partsReplaced || ''
+          });
+        }
+        
+        setLoading(false);
+      } catch (err) {
+        console.error('Failed to fetch data:', err);
+        setErrors({ submit: 'Failed to load data. Please try again later.' });
+        setLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, [isEditing, maintenanceId, engineIdFromUrl]);
   
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -120,24 +145,30 @@ const MaintenanceForm = () => {
     setSubmitting(true);
     
     try {
-      // This would be an API call in a real app
-      // if (isEditing) {
-      //   await maintenanceAPI.update(maintenanceId, formData);
-      // } else {
-      //   await maintenanceAPI.create(formData);
-      // }
+      // Format the data for API
+      const apiData = { ...formData };
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Process parts_replaced as array if it's a comma-separated string
+      if (typeof apiData.parts_replaced === 'string' && apiData.parts_replaced.trim()) {
+        apiData.parts_replaced = apiData.parts_replaced.split(',').map(part => part.trim());
+      }
+      
+      // Send to API
+      if (isEditing) {
+        await maintenanceAPI.update(maintenanceId, apiData);
+      } else {
+        await maintenanceAPI.create(apiData);
+      }
       
       setSuccess(true);
-      // In a real app, you would navigate or show a success message
       setTimeout(() => {
-        setSuccess(false);
-        // navigate('/dashboard/maintenance');
+        navigate('/dashboard/maintenance');
       }, 2000);
     } catch (err) {
-      setErrors({ submit: err.message || 'Failed to save maintenance record' });
+      console.error('Failed to save maintenance record:', err);
+      setErrors({ 
+        submit: err.response?.data?.error || 'Failed to save maintenance record. Please try again.' 
+      });
     } finally {
       setSubmitting(false);
     }
@@ -149,16 +180,13 @@ const MaintenanceForm = () => {
     setSubmitting(true);
     
     try {
-      // This would be an API call in a real app
-      // await maintenanceAPI.delete(maintenanceId);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // In a real app, you would navigate
-      // navigate('/dashboard/maintenance');
+      await maintenanceAPI.delete(maintenanceId);
+      navigate('/dashboard/maintenance');
     } catch (err) {
-      setErrors({ submit: err.message || 'Failed to delete maintenance record' });
+      console.error('Failed to delete maintenance record:', err);
+      setErrors({ 
+        submit: err.response?.data?.error || 'Failed to delete maintenance record. Please try again.' 
+      });
     } finally {
       setSubmitting(false);
       setShowConfirmDelete(false);
@@ -166,10 +194,19 @@ const MaintenanceForm = () => {
   };
   
   const handleCancel = () => {
-    // In a real app, this would navigate back
-    // navigate('/dashboard/maintenance');
-    console.log('Cancelled');
+    navigate('/dashboard/maintenance');
   };
+  
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -246,6 +283,7 @@ const MaintenanceForm = () => {
               value={formData.engine_id}
               onChange={handleChange}
               className={`w-full py-2 px-3 border ${errors.engine_id ? 'border-red-500' : 'border-gray-300'} bg-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all hover:border-blue-400`}
+              disabled={isEditing}
             >
               <option value="">Select an engine</option>
               {engineOptions.map(engine => (
@@ -381,7 +419,7 @@ const MaintenanceForm = () => {
               type="text"
               id="performed_by"
               name="performed_by"
-              value="Current User" // In a real app, this would be populated from auth context
+              value={currentUser?.username || 'Current User'}
               disabled
               className="w-full py-2 px-3 border border-gray-200 bg-gray-50 rounded-md shadow-sm focus:outline-none sm:text-sm cursor-not-allowed"
             />
@@ -423,7 +461,7 @@ const MaintenanceForm = () => {
             type="button"
             onClick={() => {
               setFormData({
-                engine_id: '',
+                engine_id: engineIdFromUrl || '',
                 maintenance_type: 'scheduled',
                 description: '',
                 start_date: new Date().toISOString().split('T')[0],
