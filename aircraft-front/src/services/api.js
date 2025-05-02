@@ -1,3 +1,4 @@
+// src/services/api.js
 import axios from 'axios';
 
 // Create an axios instance with default configs
@@ -35,6 +36,10 @@ api.interceptors.response.use(
       localStorage.removeItem('user');
       window.location.href = '/login';
     }
+    
+    // Log detailed error for debugging
+    console.error('API Error:', error.response ? error.response.data : error.message);
+    
     return Promise.reject(error);
   }
 );
@@ -45,7 +50,7 @@ const authAPI = {
   register: (userData) => api.post('/register', userData),
 };
 
-// Engine APIs
+// Engine APIs - match the Flask endpoints exactly
 const enginesAPI = {
   getAll: () => api.get('/engines'),
   getById: (id) => api.get(`/engines/${id}`),
@@ -54,22 +59,23 @@ const enginesAPI = {
   addCycleData: (id, cycleData) => api.post(`/engines/${id}/cycles`, cycleData),
 };
 
-// Maintenance APIs
+// Maintenance APIs - match the Flask endpoints exactly
 const maintenanceAPI = {
   getAll: (params = {}) => api.get('/maintenance', { params }),
   getById: (id) => api.get(`/maintenance/${id}`),
   create: (maintenanceData) => api.post('/maintenance', maintenanceData),
   update: (id, maintenanceData) => api.put(`/maintenance/${id}`, maintenanceData),
-  remove: (id) => api.delete(`/maintenance/${id}`),
+  delete: (id) => api.delete(`/maintenance/${id}`),
 };
 
-// Alerts APIs
+// Alerts APIs - match the Flask endpoints exactly
 const alertsAPI = {
   getAll: (params = {}) => api.get('/alerts', { params }),
-  updateAlert: (id, alertData) => api.put(`/alerts/${id}`, alertData),
+  getById: (id) => api.get(`/alerts/${id}`),
+  update: (id, alertData) => api.put(`/alerts/${id}`, alertData),
 };
 
-// Dashboard API
+// Dashboard API - match the Flask endpoints exactly
 const dashboardAPI = {
   getSummary: () => api.get('/dashboard'),
 };
