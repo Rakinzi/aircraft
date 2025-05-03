@@ -188,6 +188,7 @@ const EngineDetail = () => {
 
   // Fetch engine details
   useEffect(() => {
+    document.title = "Engine Details - Aircraft Engine Monitoring";
     const fetchEngineDetail = async () => {
       try {
         setLoading(true);

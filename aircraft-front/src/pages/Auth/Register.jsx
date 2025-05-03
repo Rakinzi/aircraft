@@ -46,6 +46,7 @@ const EnhancedRegister = () => {
   // Animation effects
   useEffect(() => {
     // Trigger animations after component mounts
+    document.title = 'AeroEngine - Register';
     setTimeout(() => setBackgroundLoaded(true), 300);
     setTimeout(() => setFormVisible(true), 800);
   }, []);

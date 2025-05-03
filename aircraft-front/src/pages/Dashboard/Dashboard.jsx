@@ -158,6 +158,7 @@ const Dashboard = () => {
   
   // Fetch dashboard data
   useEffect(() => {
+    document.title = 'Dashboard - Aircraft Engine Monitoring';
     const fetchDashboardData = async () => {
       try {
         setLoading(true);

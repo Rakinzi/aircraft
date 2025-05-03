@@ -13,6 +13,7 @@ const EnginesList = () => {
   const navigate = useNavigate()
 
   useEffect(() => {
+    document.title = 'Engines - Aircraft Engine Monitoring'
     const fetchEngines = async () => {
       try {
         setLoading(true)

@@ -33,6 +33,7 @@ const EnhancedLogin = () => {
   
   useEffect(() => {
     // Trigger animations after component mounts
+    document.title = 'AeroEngine - Login';
     setTimeout(() => setBackgroundLoaded(true), 300);
     setTimeout(() => setFormVisible(true), 800);
   }, []);

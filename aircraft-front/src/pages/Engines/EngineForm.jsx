@@ -61,6 +61,7 @@ const EngineForm = () => {
   
   // Fetch engine if editing
   useEffect(() => {
+    document.title = isEditing ? 'Edit Engine' : 'Add New Engine';
     const fetchEngine = async () => {
       if (!isEditing) return;
       

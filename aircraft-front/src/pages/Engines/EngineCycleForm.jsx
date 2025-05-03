@@ -191,6 +191,7 @@ const EngineCycleForm = () => {
   
   // Fetch engines list
   useEffect(() => {
+    document.title = "Add Engine - Aircraft Engine Monitoring";
     const fetchEngines = async () => {
       try {
         setLoading(true);
