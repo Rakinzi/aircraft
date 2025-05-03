@@ -36,14 +36,14 @@ const RadialProgressBar = ({ value, maxValue, size = 150, strokeWidth = 10 }) =>
   const circumference = radius * 2 * Math.PI;
   const progress = value / maxValue;
   const strokeDashoffset = circumference * (1 - progress);
-  
+
   // Calculate color based on value (red to green gradient)
   const getColor = (val) => {
     // Calculate hue (0 = red, 120 = green)
     const hue = val * 120;
     return `hsl(${hue}, 70%, 50%)`;
   };
-  
+
   return (
     <div className="relative" style={{ width: size, height: size }}>
       {/* Background circle */}
@@ -95,9 +95,8 @@ const MaintenanceTimeline = ({ maintenanceHistory }) => {
               ) : null}
               <div className="relative flex space-x-3">
                 <div>
-                  <span className={`h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white ${
-                    record.maintenance_type === 'scheduled' ? 'bg-blue-500' : 'bg-orange-500'
-                  }`}>
+                  <span className={`h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white ${record.maintenance_type === 'scheduled' ? 'bg-blue-500' : 'bg-orange-500'
+                    }`}>
                     <Wrench size={16} className="text-white" />
                   </span>
                 </div>
@@ -112,9 +111,9 @@ const MaintenanceTimeline = ({ maintenanceHistory }) => {
                     </p>
                     {record.parts_replaced && (
                       <p className="mt-1 text-xs text-gray-600">
-                        Parts replaced: {typeof record.parts_replaced === 'string' 
-                          ? record.parts_replaced 
-                          : Array.isArray(record.parts_replaced) 
+                        Parts replaced: {typeof record.parts_replaced === 'string'
+                          ? record.parts_replaced
+                          : Array.isArray(record.parts_replaced)
                             ? record.parts_replaced.join(', ')
                             : typeof record.parts_replaced === 'object'
                               ? Object.keys(record.parts_replaced).join(', ')
@@ -150,13 +149,12 @@ const SensorReadout = ({ name, value, unit, trend, trendPeriod = "past week" }) 
           </p>
         </div>
         {trend !== undefined && (
-          <div className={`flex items-center text-xs ${
-            trend > 0 
-              ? 'text-red-500' 
-              : trend < 0 
-              ? 'text-green-500'
-              : 'text-gray-400'
-          }`}>
+          <div className={`flex items-center text-xs ${trend > 0
+              ? 'text-red-500'
+              : trend < 0
+                ? 'text-green-500'
+                : 'text-gray-400'
+            }`}>
             {trend !== 0 && (
               <span className="mr-1">
                 {trend > 0 ? (
@@ -187,7 +185,7 @@ const EngineDetail = () => {
   const [error, setError] = useState('');
   const [activePredictionTab, setActivePredictionTab] = useState('probability');
   const navigate = useNavigate();
-  
+
   // Fetch engine details
   useEffect(() => {
     const fetchEngineDetail = async () => {
@@ -261,7 +259,7 @@ const EngineDetail = () => {
 
   // Get the latest cycle data
   const latestCycle = engine.cycles?.length > 0 ? engine.cycles[engine.cycles.length - 1] : null;
-  
+
   // Format failure probability data for charts
   const failureProbData = engine.cycles?.map(cycle => ({
     cycle: cycle.cycle,
@@ -282,7 +280,7 @@ const EngineDetail = () => {
       </div>
 
       {/* Engine header */}
-      <div className="bg-white rounded-lg shadow-lg p-6 animate-fadeInUp" style={{animationDelay: '0.1s'}}>
+      <div className="bg-white rounded-lg shadow-lg p-6 animate-fadeInUp" style={{ animationDelay: '0.1s' }}>
         <div className="flex flex-col md:flex-row md:items-center md:justify-between">
           <div className="flex items-center">
             <div className="p-3 bg-blue-100 rounded-full mr-4">
@@ -301,7 +299,7 @@ const EngineDetail = () => {
               </div>
             </div>
           </div>
-          
+
           <div className="mt-4 md:mt-0 flex flex-wrap gap-2">
             <Link
               to={`/dashboard/engines/${engineId}/edit`}
@@ -319,25 +317,24 @@ const EngineDetail = () => {
             </Link>
           </div>
         </div>
-        
+
         {/* Engine status info */}
         {latestCycle && (
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 animate-fadeInUp" style={{animationDelay: '0.2s'}}>
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 animate-fadeInUp" style={{ animationDelay: '0.2s' }}>
             <div className="p-4 bg-gray-50 rounded-lg shadow-md transition-all duration-300 hover:shadow-lg">
               <div className="flex items-center">
                 <Gauge size={20} className="text-blue-500 mr-2" />
                 <span className="text-sm font-medium text-gray-700">Status</span>
               </div>
               <div className="mt-2">
-                <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                  latestCycle.failure_probability > 0.7 
-                    ? 'bg-red-100 text-red-800' 
+                <span className={`px-2 py-1 text-xs font-medium rounded-full ${latestCycle.failure_probability > 0.7
+                    ? 'bg-red-100 text-red-800'
                     : engine.status === 'maintenance'
-                    ? 'bg-yellow-100 text-yellow-800'
-                    : 'bg-green-100 text-green-800'
-                }`}>
-                  {latestCycle.failure_probability > 0.7 
-                    ? 'Warning' 
+                      ? 'bg-yellow-100 text-yellow-800'
+                      : 'bg-green-100 text-green-800'
+                  }`}>
+                  {latestCycle.failure_probability > 0.7
+                    ? 'Warning'
                     : engine.status.charAt(0).toUpperCase() + engine.status.slice(1)}
                 </span>
                 {latestCycle.failure_probability > 0.7 && (
@@ -347,7 +344,7 @@ const EngineDetail = () => {
                 )}
               </div>
             </div>
-            
+
             <div className="p-4 bg-gray-50 rounded-lg shadow-md transition-all duration-300 hover:shadow-lg">
               <div className="flex items-center">
                 <Clock size={20} className="text-blue-500 mr-2" />
@@ -360,19 +357,19 @@ const EngineDetail = () => {
                 </span>
               </div>
             </div>
-            
+
             <div className="p-4 bg-gray-50 rounded-lg shadow-md transition-all duration-300 hover:shadow-lg">
               <div className="flex items-center">
                 <Calendar size={20} className="text-blue-500 mr-2" />
                 <span className="text-sm font-medium text-gray-700">Installation Date</span>
               </div>
               <div className="mt-2 text-sm text-gray-700">
-                {engine.installation_date 
-                  ? new Date(engine.installation_date).toLocaleDateString() 
+                {engine.installation_date
+                  ? new Date(engine.installation_date).toLocaleDateString()
                   : 'Not specified'}
                 <span className="block text-xs text-gray-500 mt-1">
-                  {engine.installation_date 
-                    ? `${Math.round((new Date() - new Date(engine.installation_date)) / (1000 * 60 * 60 * 24 * 30))} months in service` 
+                  {engine.installation_date
+                    ? `${Math.round((new Date() - new Date(engine.installation_date)) / (1000 * 60 * 60 * 24 * 30))} months in service`
                     : ''}
                 </span>
               </div>
@@ -380,48 +377,45 @@ const EngineDetail = () => {
           </div>
         )}
       </div>
-      
+
       {/* Prediction & RUL section */}
       {latestCycle && (
-        <div className="bg-white rounded-lg shadow-lg p-6 animate-fadeInUp" style={{animationDelay: '0.3s'}}>
+        <div className="bg-white rounded-lg shadow-lg p-6 animate-fadeInUp" style={{ animationDelay: '0.3s' }}>
           <div className="flex items-center mb-4">
             <Zap size={20} className="text-blue-500 mr-2" />
             <h2 className="text-lg font-medium text-gray-800">Predictive Analytics</h2>
           </div>
-          
+
           <div className="flex border-b border-gray-200 mb-4">
             <button
-              className={`py-2 px-4 font-medium text-sm ${
-                activePredictionTab === 'probability' 
-                  ? 'text-blue-600 border-b-2 border-blue-500' 
+              className={`py-2 px-4 font-medium text-sm ${activePredictionTab === 'probability'
+                  ? 'text-blue-600 border-b-2 border-blue-500'
                   : 'text-gray-500 hover:text-blue-500'
-              }`}
+                }`}
               onClick={() => setActivePredictionTab('probability')}
             >
               Failure Probability
             </button>
             <button
-              className={`py-2 px-4 font-medium text-sm ${
-                activePredictionTab === 'rul' 
-                  ? 'text-blue-600 border-b-2 border-blue-500' 
+              className={`py-2 px-4 font-medium text-sm ${activePredictionTab === 'rul'
+                  ? 'text-blue-600 border-b-2 border-blue-500'
                   : 'text-gray-500 hover:text-blue-500'
-              }`}
+                }`}
               onClick={() => setActivePredictionTab('rul')}
             >
               Remaining Useful Life
             </button>
             <button
-              className={`py-2 px-4 font-medium text-sm ${
-                activePredictionTab === 'sensors' 
-                  ? 'text-blue-600 border-b-2 border-blue-500' 
+              className={`py-2 px-4 font-medium text-sm ${activePredictionTab === 'sensors'
+                  ? 'text-blue-600 border-b-2 border-blue-500'
                   : 'text-gray-500 hover:text-blue-500'
-              }`}
+                }`}
               onClick={() => setActivePredictionTab('sensors')}
             >
               Sensor Trends
             </button>
           </div>
-          
+
           {activePredictionTab === 'probability' && failureProbData.length > 0 && (
             <div className="animate-fadeIn">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -433,32 +427,31 @@ const EngineDetail = () => {
                         <XAxis dataKey="cycle" />
                         <YAxis domain={[0, 1]} tickFormatter={(value) => `${Math.round(value * 100)}%`} />
                         <Tooltip formatter={(value) => [`${Math.round(value * 100)}%`, 'Probability']} />
-                        <Area 
-                          type="monotone" 
-                          dataKey="probability" 
-                          stroke="#ef5350" 
-                          fill="#ffcdd2" 
-                          activeDot={{ r: 8 }} 
+                        <Area
+                          type="monotone"
+                          dataKey="probability"
+                          stroke="#ef5350"
+                          fill="#ffcdd2"
+                          activeDot={{ r: 8 }}
                         />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
                   <p className="text-sm text-gray-600 mt-2">
-                    Failure probability trend over engine cycles shows 
-                    {latestCycle.failure_probability > 0.5 
-                      ? ' significant increase in recent cycles, indicating maintenance should be scheduled soon.' 
+                    Failure probability trend over engine cycles shows
+                    {latestCycle.failure_probability > 0.5
+                      ? ' significant increase in recent cycles, indicating maintenance should be scheduled soon.'
                       : ' normal behavior with no immediate concerns.'}
                   </p>
                 </div>
-                
+
                 <div className="flex flex-col items-center justify-center p-4 bg-gray-50 rounded-lg">
-                  <div className={`text-6xl font-bold ${
-                    latestCycle.failure_probability > 0.7 
-                      ? 'text-red-600' 
-                      : latestCycle.failure_probability > 0.5 
-                      ? 'text-yellow-600' 
-                      : 'text-green-600'
-                  }`}>
+                  <div className={`text-6xl font-bold ${latestCycle.failure_probability > 0.7
+                      ? 'text-red-600'
+                      : latestCycle.failure_probability > 0.5
+                        ? 'text-yellow-600'
+                        : 'text-green-600'
+                    }`}>
                     {Math.round(latestCycle.failure_probability * 100)}%
                   </div>
                   <div className="text-gray-600 text-sm mt-2">Current Failure Probability</div>
@@ -485,7 +478,7 @@ const EngineDetail = () => {
               </div>
             </div>
           )}
-          
+
           {activePredictionTab === 'rul' && (
             <div className="animate-fadeIn">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -495,13 +488,13 @@ const EngineDetail = () => {
                   )}
                   <div className="mt-4 text-center">
                     <p className="text-sm text-gray-600">
-                      Based on predictive model analysis, the engine has approximately 
-                      <span className="font-bold text-blue-600"> {Math.round(latestCycle.rul || 0)} cycles </span> 
+                      Based on predictive model analysis, the engine has approximately
+                      <span className="font-bold text-blue-600"> {Math.round(latestCycle.rul || 0)} cycles </span>
                       of useful life remaining before maintenance is required.
                     </p>
                   </div>
                 </div>
-                
+
                 <div className="md:col-span-2">
                   {engine.cycles?.length > 0 && (
                     <div className="h-64">
@@ -512,11 +505,11 @@ const EngineDetail = () => {
                           <YAxis />
                           <Tooltip />
                           <Legend />
-                          <Line 
-                            type="monotone" 
-                            dataKey="rul" 
-                            name="Remaining Useful Life" 
-                            stroke="#2196f3" 
+                          <Line
+                            type="monotone"
+                            dataKey="rul"
+                            name="Remaining Useful Life"
+                            stroke="#2196f3"
                             strokeWidth={2}
                             dot={{ r: 4 }}
                             activeDot={{ r: 8 }}
@@ -526,42 +519,42 @@ const EngineDetail = () => {
                     </div>
                   )}
                   <p className="text-sm text-gray-600 mt-2">
-                    {latestCycle.rul < 30 
-                      ? 'The RUL trend shows accelerated degradation in recent cycles, indicating a potential component issue that should be addressed.' 
+                    {latestCycle.rul < 30
+                      ? 'The RUL trend shows accelerated degradation in recent cycles, indicating a potential component issue that should be addressed.'
                       : 'The RUL trend shows normal degradation patterns within expected parameters.'}
                   </p>
                 </div>
               </div>
             </div>
           )}
-          
+
           {activePredictionTab === 'sensors' && (
             <div className="animate-fadeIn">
               {latestCycle.sensor_data && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                  <SensorReadout 
-                    name="Fan Speed (s2)" 
+                  <SensorReadout
+                    name="Fan Speed (s2)"
                     value={latestCycle.sensor_data.s2 || 'N/A'}
                     unit="RPM"
                   />
-                  <SensorReadout 
-                    name="Core Speed (s3)" 
+                  <SensorReadout
+                    name="Core Speed (s3)"
                     value={latestCycle.sensor_data.s3 || 'N/A'}
                     unit="RPM"
                   />
-                  <SensorReadout 
-                    name="EGT (s4)" 
+                  <SensorReadout
+                    name="EGT (s4)"
                     value={latestCycle.sensor_data.s4 || 'N/A'}
                     unit="°C"
                   />
-                  <SensorReadout 
-                    name="Oil Pressure (s5)" 
+                  <SensorReadout
+                    name="Oil Pressure (s5)"
                     value={latestCycle.sensor_data.s5 || 'N/A'}
                     unit="PSI"
                   />
                 </div>
               )}
-              
+
               {engine.cycles?.length > 0 && (
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
@@ -571,26 +564,26 @@ const EngineDetail = () => {
                       <YAxis />
                       <Tooltip />
                       <Legend />
-                      <Line 
-                        type="monotone" 
-                        dataKey={(data) => data.sensor_data?.s2} 
-                        name="Fan Speed (s2)" 
-                        stroke="#2196f3" 
-                        activeDot={{ r: 8 }} 
+                      <Line
+                        type="monotone"
+                        dataKey={(data) => data.sensor_data?.s2}
+                        name="Fan Speed (s2)"
+                        stroke="#2196f3"
+                        activeDot={{ r: 8 }}
                         strokeWidth={2}
                       />
-                      <Line 
-                        type="monotone" 
-                        dataKey={(data) => data.sensor_data?.s3} 
-                        name="Core Speed (s3)" 
-                        stroke="#4caf50" 
+                      <Line
+                        type="monotone"
+                        dataKey={(data) => data.sensor_data?.s3}
+                        name="Core Speed (s3)"
+                        stroke="#4caf50"
                         strokeWidth={2}
                       />
-                      <Line 
-                        type="monotone" 
-                        dataKey={(data) => data.sensor_data?.s4} 
-                        name="EGT (s4)" 
-                        stroke="#ff9800" 
+                      <Line
+                        type="monotone"
+                        dataKey={(data) => data.sensor_data?.s4}
+                        name="EGT (s4)"
+                        stroke="#ff9800"
                         strokeWidth={2}
                       />
                     </LineChart>
@@ -598,17 +591,17 @@ const EngineDetail = () => {
                 </div>
               )}
               <p className="text-sm text-gray-600 mt-2">
-                {latestCycle.failure_probability > 0.5 
-                  ? 'Sensor trends show increasing values, which correlate with the rising failure probability. The pattern matching algorithms have identified this pattern as indicative of potential component wear.' 
+                {latestCycle.failure_probability > 0.5
+                  ? 'Sensor trends show increasing values, which correlate with the rising failure probability. The pattern matching algorithms have identified this pattern as indicative of potential component wear.'
                   : 'Sensor trends show normal behavior within expected parameters.'}
               </p>
             </div>
           )}
         </div>
       )}
-      
+
       {/* Maintenance History */}
-      <div className="bg-white rounded-lg shadow-lg p-6 animate-fadeInUp" style={{animationDelay: '0.4s'}}>
+      <div className="bg-white rounded-lg shadow-lg p-6 animate-fadeInUp" style={{ animationDelay: '0.4s' }}>
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center">
             <Wrench size={20} className="text-blue-500 mr-2" />
@@ -622,16 +615,16 @@ const EngineDetail = () => {
             Add maintenance record
           </Link>
         </div>
-        
+
         {engine.maintenance_history && engine.maintenance_history.length > 0 ? (
           <MaintenanceTimeline maintenanceHistory={engine.maintenance_history} />
         ) : (
           <p className="text-sm text-gray-500">No maintenance records found for this engine.</p>
         )}
       </div>
-      
+
       {/* Actions Panel */}
-      <div className="bg-blue-50 rounded-lg shadow-lg p-6 animate-fadeInUp" style={{animationDelay: '0.5s'}}>
+      <div className="bg-blue-50 rounded-lg shadow-lg p-6 animate-fadeInUp" style={{ animationDelay: '0.5s' }}>
         <h3 className="text-lg font-medium text-blue-800 mb-4 flex items-center">
           <Activity size={20} className="mr-2" />
           Actions & Reports
@@ -646,7 +639,7 @@ const EngineDetail = () => {
               <p className="text-xs text-gray-500">Full diagnostic details</p>
             </div>
           </button>
-          
+
           <button className="bg-white rounded-lg p-4 shadow-md flex items-center hover:shadow-lg transition-shadow">
             <div className="p-2 bg-blue-100 rounded-full mr-3">
               <Download size={18} className="text-blue-600" />
@@ -656,8 +649,8 @@ const EngineDetail = () => {
               <p className="text-xs text-gray-500">CSV, PDF or JSON</p>
             </div>
           </button>
-          
-          <Link 
+
+          <Link
             to={`/dashboard/maintenance/new?engineId=${engineId}`}
             className="bg-white rounded-lg p-4 shadow-md flex items-center hover:shadow-lg transition-shadow"
           >
@@ -669,9 +662,22 @@ const EngineDetail = () => {
               <p className="text-xs text-gray-500">Based on predictions</p>
             </div>
           </Link>
+
+          <Link
+            to={`/dashboard/engines/${engineId}/add-cycle`}
+            className="bg-white rounded-lg p-4 shadow-md flex items-center hover:shadow-lg transition-shadow"
+          >
+            <div className="p-2 bg-blue-100 rounded-full mr-3">
+              <Plus size={18} className="text-blue-600" />
+            </div>
+            <div className="text-left">
+              <p className="font-medium text-gray-800">Add Cycle Data</p>
+              <p className="text-xs text-gray-500">Test the prediction model</p>
+            </div>
+          </Link>
         </div>
       </div>
-      
+
       {/* CSS for animations */}
       <style jsx>{`
         @keyframes fadeIn {

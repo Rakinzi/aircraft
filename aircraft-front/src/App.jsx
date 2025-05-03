@@ -8,6 +8,7 @@ import Register from './pages/Auth/Register'
 import Dashboard from './pages/Dashboard/Dashboard'
 import EnginesList from './pages/Engines/EnginesList'
 import EngineDetail from './pages/Engines/EngineDetail'
+import EngineCycleForm from './pages/Engines/EngineCycleForm' // Import the new component
 import MaintenanceList from './pages/Maintenance/MaintenanceList'
 import MaintenanceForm from './pages/Maintenance/MaintenanceForm'
 import AlertsList from './pages/Alerts/AlertsList'
@@ -39,12 +40,14 @@ function App() {
               <Route index element={<Dashboard />} />
               <Route path="engines" element={<EnginesList />} />
               <Route path="engines/:engineId" element={<EngineDetail />} />
+              <Route path="engines/new" element={<EngineForm />} />
+              <Route path="engines/:engineId/edit" element={<EngineForm />} />
+              <Route path="engines/:engineId/add-cycle" element={<EngineCycleForm />} /> {/* New route for specific engine */}
+              <Route path="engines/add-cycle" element={<EngineCycleForm />} /> {/* General route */}
               <Route path="maintenance" element={<MaintenanceList />} />
               <Route path="maintenance/new" element={<MaintenanceForm />} />
               <Route path="maintenance/:maintenanceId/edit" element={<MaintenanceForm />} />
               <Route path="alerts" element={<AlertsList />} />
-              <Route path="engines/new" element={<EngineForm />} />
-              <Route path="engines/:engineId/edit" element={<EngineForm />} />
             </Route>
           </Route>
 

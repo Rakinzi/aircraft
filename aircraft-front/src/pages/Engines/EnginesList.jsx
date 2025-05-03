@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { AlertTriangle, ChevronRight, Plus, Search } from 'lucide-react'
+import { AlertTriangle, ChevronRight, Plus, Search, Database } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { enginesAPI } from '../../services/api'
 
@@ -11,7 +11,7 @@ const EnginesList = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const { currentUser } = useAuth()
   const navigate = useNavigate()
-  
+
   useEffect(() => {
     const fetchEngines = async () => {
       try {
@@ -25,23 +25,23 @@ const EnginesList = () => {
         setLoading(false)
       }
     }
-    
+
     fetchEngines()
   }, [])
-  
-  const filteredEngines = engines.filter(engine => 
-    engine.serial_number?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+
+  const filteredEngines = engines.filter(engine =>
+    engine.serial_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     engine.model?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     engine.aircraft_id?.toLowerCase().includes(searchTerm.toLowerCase())
   )
-  
+
   const getStatusColor = (status, failure_probability) => {
     if (status === 'maintenance') return 'text-yellow-600 bg-yellow-100'
     if (status === 'retired') return 'text-gray-600 bg-gray-100'
     if (failure_probability && failure_probability > 0.7) return 'text-red-600 bg-red-100'
     return 'text-green-600 bg-green-100'
   }
-  
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -52,22 +52,32 @@ const EnginesList = () => {
       </div>
     )
   }
-  
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-gray-800">Engines</h1>
         {(currentUser.role === 'admin' || currentUser.role === 'engineer') && (
-          <Link
-            to="/dashboard/engines/new"
-            className="mt-3 sm:mt-0 inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 focus:outline-none"
-          >
-            <Plus size={16} className="mr-2" />
-            Add Engine
-          </Link>
+          <div className="mt-3 sm:mt-0 flex space-x-3">
+            <Link
+              to="/dashboard/engines/add-cycle"
+              className="inline-flex items-center px-4 py-2 bg-indigo-100 text-indigo-700 border border-indigo-300 rounded-md hover:bg-indigo-200 focus:outline-none"
+            >
+              <Database size={16} className="mr-2" />
+              Add Cycle Data
+            </Link>
+
+            <Link
+              to="/dashboard/engines/new"
+              className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 focus:outline-none"
+            >
+              <Plus size={16} className="mr-2" />
+              Add Engine
+            </Link>
+          </div>
         )}
       </div>
-      
+
       {/* Search box */}
       <div className="relative">
         <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -81,14 +91,14 @@ const EnginesList = () => {
           onChange={(e) => setSearchTerm(e.target.value)}
         />
       </div>
-      
+
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
           <strong className="font-bold">Error!</strong>
           <span className="block sm:inline"> {error}</span>
         </div>
       )}
-      
+
       {/* Engines list */}
       <div className="bg-white shadow overflow-hidden sm:rounded-md">
         {filteredEngines.length > 0 ? (
@@ -117,8 +127,8 @@ const EnginesList = () => {
                       </div>
                       <div className="flex items-center">
                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(engine.status, engine.failure_probability)}`}>
-                          {engine.status === 'active' ? 
-                            (engine.failure_probability > 0.7 ? 'Warning' : 'Active') : 
+                          {engine.status === 'active' ?
+                            (engine.failure_probability > 0.7 ? 'Warning' : 'Active') :
                             engine.status.charAt(0).toUpperCase() + engine.status.slice(1)}
                         </span>
                         <ChevronRight size={16} className="ml-4 text-gray-400" />
