@@ -16,6 +16,7 @@ import AlertsList from './pages/Alerts/AlertsList'
 import AuthLayout from './components/Layouts/AuthLayout'
 import DashboardLayout from './components/Layouts/DashboardLayout'
 import PrivateRoute from './components/PrivateRoute'
+import EngineForm from './pages/Engines/EngineForm'
 
 // Context
 import { AuthProvider } from './contexts/AuthContext'
@@ -31,7 +32,7 @@ function App() {
             <Route path="login" element={<Login />} />
             <Route path="register" element={<Register />} />
           </Route>
-          
+
           {/* Protected Dashboard Routes */}
           <Route element={<PrivateRoute />}>
             <Route path="/dashboard" element={<DashboardLayout />}>
@@ -42,9 +43,11 @@ function App() {
               <Route path="maintenance/new" element={<MaintenanceForm />} />
               <Route path="maintenance/:maintenanceId/edit" element={<MaintenanceForm />} />
               <Route path="alerts" element={<AlertsList />} />
+              <Route path="engines/new" element={<EngineForm />} />
+              <Route path="engines/:engineId/edit" element={<EngineForm />} />
             </Route>
           </Route>
-          
+
           {/* Catch all */}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>

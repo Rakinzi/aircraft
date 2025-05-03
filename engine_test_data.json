@@ -1,0 +1,58 @@
+[
+    {
+      "serial_number": "CFM56-33421",
+      "model": "CFM56-7B",
+      "aircraft_id": "N12345",
+      "installation_date": "2023-01-15",
+      "status": "active"
+    },
+    {
+      "serial_number": "TRENT-89712",
+      "model": "Trent 1000",
+      "aircraft_id": "G-ABCD",
+      "installation_date": "2022-08-22",
+      "status": "active"
+    },
+    {
+      "serial_number": "LEAP-1B-54231",
+      "model": "LEAP-1B",
+      "aircraft_id": "N54321",
+      "installation_date": "2023-11-30",
+      "status": "active"
+    },
+    {
+      "serial_number": "PW1100G-78563",
+      "model": "PW1000G",
+      "aircraft_id": "A7-BCX",
+      "installation_date": "2022-04-18",
+      "status": "maintenance"
+    },
+    {
+      "serial_number": "GE90-115B-10045",
+      "model": "GE90-115B",
+      "aircraft_id": "B-2001",
+      "installation_date": "2021-09-10",
+      "status": "active"
+    },
+    {
+      "serial_number": "TRENT-XWB-84112",
+      "model": "Trent XWB",
+      "aircraft_id": "F-WXYZ",
+      "installation_date": "2023-03-27",
+      "status": "active"
+    },
+    {
+      "serial_number": "CFM56-5B-23456",
+      "model": "CFM56-5B",
+      "aircraft_id": "VH-ABC",
+      "installation_date": "2020-07-14",
+      "status": "retired"
+    },
+    {
+      "serial_number": "GE9X-10002",
+      "model": "GE9X",
+      "aircraft_id": "N78910",
+      "installation_date": "2024-01-05",
+      "status": "active"
+    }
+  ]
