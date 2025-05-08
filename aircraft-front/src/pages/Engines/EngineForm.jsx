@@ -158,9 +158,12 @@ const EngineForm = () => {
     setSubmitting(true);
     
     try {
-      // This API endpoint might not exist in the current implementation
-      // await enginesAPI.delete(engineId);
-      navigate('/dashboard/engines');
+      // Uncommented and now using the delete API method
+      await enginesAPI.delete(engineId);
+      setSuccess(true);
+      setTimeout(() => {
+        navigate('/dashboard/engines');
+      }, 1500);
     } catch (err) {
       console.error('Failed to delete engine:', err);
       setErrors({ 

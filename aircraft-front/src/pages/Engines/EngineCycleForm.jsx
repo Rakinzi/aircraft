@@ -370,12 +370,14 @@ const EngineCycleForm = () => {
     
     try {
       if (batchMode) {
-        // Submit multiple cycles in batch mode
-        const promises = [];
+        // Submit multiple cycles in batch mode, but with improved error handling
+        let successCount = 0;
+        let failedCount = 0;
         
         // Use the current form data as the base for the first cycle
         let baseCycleData = { ...formData, cycle: batchStartCycle };
         
+        // Sequential submission with error handling instead of Promise.all
         for (let i = 0; i < batchCount; i++) {
           // Generate realistic degradation based on previous cycle
           const cycleData = i === 0 
@@ -385,37 +387,64 @@ const EngineCycleForm = () => {
           // Update cycle number
           cycleData.cycle = batchStartCycle + i;
           
-          // If this is not the first cycle, update the base for next iteration
-          if (i > 0) {
-            baseCycleData = { ...cycleData };
+          try {
+            await enginesAPI.addCycleData(selectedEngine, cycleData);
+            successCount++;
+            
+            // If this is not the first cycle, update the base for next iteration
+            if (i > 0) {
+              baseCycleData = { ...cycleData };
+            }
+          } catch (cycleError) {
+            console.error(`Failed to add cycle ${cycleData.cycle}:`, cycleError);
+            failedCount++;
+            // Continue with the next cycle instead of stopping the whole process
+            continue;
           }
-          
-          promises.push(enginesAPI.addCycleData(selectedEngine, cycleData));
         }
         
-        await Promise.all(promises);
-        
-        setSuccess(true);
-        setTimeout(() => {
-          // Refresh to show updated cycle count
-          setSuccess(false);
-          const newCycle = batchStartCycle + batchCount;
-          setCycleCount(newCycle);
-          setBatchStartCycle(newCycle);
-          setFormData(prev => ({ ...prev, cycle: newCycle }));
-        }, 3000);
+        if (successCount > 0) {
+          // Show partial success message if any cycles were added
+          setSuccess(true);
+          setError(failedCount > 0 ? 
+            `Successfully added ${successCount} cycles. ${failedCount} cycles failed (possibly duplicates).` 
+            : '');
+          
+          setTimeout(() => {
+            // Refresh to show updated cycle count
+            setSuccess(false);
+            const newCycle = batchStartCycle + successCount;
+            setCycleCount(newCycle);
+            setBatchStartCycle(newCycle);
+            setFormData(prev => ({ ...prev, cycle: newCycle }));
+          }, 3000);
+        } else {
+          // If no cycles were added at all, show error message
+          setError('Failed to add any cycles. The cycles might already exist or there was a server error.');
+        }
       } else {
-        // Submit single cycle
-        await enginesAPI.addCycleData(selectedEngine, formData);
-        
-        setSuccess(true);
-        setTimeout(() => {
-          // Refresh to show updated cycle count
-          setSuccess(false);
-          const newCycle = formData.cycle + 1;
-          setCycleCount(newCycle);
-          setFormData(prev => ({ ...prev, cycle: newCycle }));
-        }, 3000);
+        // Submit single cycle with improved error handling
+        try {
+          await enginesAPI.addCycleData(selectedEngine, formData);
+          
+          setSuccess(true);
+          setTimeout(() => {
+            // Refresh to show updated cycle count
+            setSuccess(false);
+            const newCycle = formData.cycle + 1;
+            setCycleCount(newCycle);
+            setFormData(prev => ({ ...prev, cycle: newCycle }));
+          }, 3000);
+        } catch (err) {
+          // Handle specific error for duplicate cycles
+          if (err.response?.data?.error?.includes('already exists')) {
+            setError(`Cycle ${formData.cycle} already exists. Try using the next available cycle number: ${cycleCount + 1}`);
+            // Update the cycle number to the next available one
+            setFormData(prev => ({ ...prev, cycle: cycleCount + 1 }));
+          } else {
+            setError(err.response?.data?.error || 'Failed to add cycle data. Please try again.');
+          }
+        }
       }
     } catch (err) {
       console.error('Failed to add cycle data:', err);
@@ -424,7 +453,6 @@ const EngineCycleForm = () => {
       setSubmitting(false);
     }
   };
-  
   // Generate an array of sensor fields for the form
   const renderSensorFields = () => {
     const sensorFields = [];

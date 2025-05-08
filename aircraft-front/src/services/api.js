@@ -56,6 +56,7 @@ const enginesAPI = {
   getById: (id) => api.get(`/engines/${id}`),
   create: (engineData) => api.post('/engines', engineData),
   update: (id, engineData) => api.put(`/engines/${id}`, engineData),
+  delete: (id) => api.delete(`/engines/${id}`), // Added delete method
   addCycleData: (id, cycleData) => api.post(`/engines/${id}/cycles`, cycleData),
 };
 

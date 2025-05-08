@@ -120,8 +120,11 @@ def add_cycle_data(engine_id):
         return jsonify({'error': 'Cycle must be a valid integer'}), 400
     
     # Check if cycle already exists for this engine
-    if EngineCycle.query.filter_by(engine_id=engine_id, cycle=cycle).first():
-        return jsonify({'error': 'Cycle data for this engine already exists'}), 409
+    existing_cycle = EngineCycle.query.filter_by(engine_id=engine_id, cycle=cycle).first()
+    if existing_cycle:
+        return jsonify({
+            'error': f'Cycle data for this engine already exists for cycle {cycle}. Try using cycle {engine.total_cycles + 1}.'
+        }), 409
     
     # Prepare sensor data
     sensor_data = {}
@@ -146,21 +149,26 @@ def add_cycle_data(engine_id):
     if cycle > engine.total_cycles:
         engine.total_cycles = cycle
     
-    db.session.commit()
+    try:
+        db.session.commit()
+        
+        # Run predictions asynchronously if we have enough data
+        cycles_count = EngineCycle.query.filter_by(engine_id=engine_id).count()
+        if cycles_count >= 50:  # We need at least 50 cycles for prediction
+            run_predictions(engine_id)
+            message = 'Cycle data added and predictions updated'
+        else:
+            message = f'Cycle data added. Need {50 - cycles_count} more cycles for predictions'
+        
+        return jsonify({
+            'message': message,
+            'cycle': new_cycle.to_dict()
+        }), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Failed to save cycle data: {str(e)}'}), 500
     
-    # Run predictions asynchronously if we have enough data
-    cycles_count = EngineCycle.query.filter_by(engine_id=engine_id).count()
-    if cycles_count >= 50:  # We need at least 50 cycles for prediction
-        run_predictions(engine_id)
-        message = 'Cycle data added and predictions updated'
-    else:
-        message = f'Cycle data added. Need {50 - cycles_count} more cycles for predictions'
     
-    return jsonify({
-        'message': message,
-        'cycle': new_cycle.to_dict()
-    }), 201
-
 @engines_bp.route('/engines/<int:engine_id>', methods=['PUT'])
 @jwt_required()
 def update_engine(engine_id):
@@ -198,3 +206,36 @@ def update_engine(engine_id):
         'message': 'Engine updated successfully',
         'engine': engine.to_dict()
     }), 200
+    
+
+@engines_bp.route('/engines/<int:engine_id>', methods=['DELETE'])
+@jwt_required()
+def delete_engine(engine_id):
+    current_user = get_jwt_identity()
+    
+    # Check if user has admin role
+    if current_user['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized. Only admin can delete engines'}), 403
+    
+    try:
+        engine = Engine.query.get_or_404(engine_id)
+        
+        # Delete all associated cycle data
+        EngineCycle.query.filter_by(engine_id=engine_id).delete()
+        
+        # Delete all associated maintenance records
+        from app.models.maintenance import Maintenance
+        Maintenance.query.filter_by(engine_id=engine_id).delete()
+        
+        # Delete all associated alerts
+        from app.models.alert import Alert
+        Alert.query.filter_by(engine_id=engine_id).delete()
+        
+        # Finally delete the engine
+        db.session.delete(engine)
+        db.session.commit()
+        
+        return jsonify({'message': 'Engine and all associated data deleted successfully'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Failed to delete engine: {str(e)}'}), 500
